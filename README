@@ -19,11 +19,11 @@ for particular cases:
   Fanout children, so each heap page contains (PageChunks * Fanout) items.
   Items inside heap page are organized in a sub-heap with a root item outside
   the page. Leaf items in the page can be roots pointing to another pages.
-  * PageChunks=1 correspond to standard heap.
-  * PageChunks>1 correspond to B-heap. See http://en.wikipedia.org/wiki/B-heap .
+  * PageChunks=1 corresponds to standard heap.
+  * PageChunks>1 corresponds to B-heap. See http://en.wikipedia.org/wiki/B-heap.
     Heap pages containing more than one page chunk can be useful if multiple
     item accesses inside heap page is faster than multiple accesses to items
-    inside distinct heap pages. This can be the case for systems with virtual
+    across distinct heap pages. This can be the case for systems with virtual
     memory, where VM pages can be swapped out to slow media.
     Heap pages can be mapped to VM pages if PageChunks is calculated using
     the following formula:
