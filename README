@@ -1,0 +1,57 @@
+Generalized heap implementation.
+
+Generalized heap is based on usual heap data structure -
+http://en.wikipedia.org/wiki/Heap_%28data_structure%29 .
+
+It provides two additional paremeters, which allow optimizing heap
+for particular cases:
+* Fanout. The number of children per each heap node.
+  * Fanout=1 corresponds to usual List data structure.
+    See http://en.wikipedia.org/wiki/List_%28computing%29 .
+  * Fanout=2 corresponds to usual Binary heap.
+    See http://en.wikipedia.org/wiki/Binary_heap .
+  * Fanout>2 corresponds to D-heap. See http://en.wikipedia.org/wiki/D-heap .
+    D-heap can be faster than Binary heap in the following cases:
+    * If item comparison is faster than item assignment.
+    * If sequental access to D items is faster than 'random' access
+      to log2(Fanout)*2 items.
+* PageChunks. The number of chunks per each heap page. Each chunk contains
+  Fanout children, so each heap page contains (PageChunks * Fanout) items.
+  Items inside heap page are organized in a sub-heap with a root item outside
+  the page. Leaf items in the page can be roots pointing to another pages.
+  * PageChunks=1 correspond to standard heap.
+  * PageChunks>1 correspond to B-heap. See http://en.wikipedia.org/wiki/B-heap .
+    Heap pages containing more than one page chunk can be useful if multiple
+    item accesses inside heap page is faster than multiple accesses to items
+    inside distinct heap pages. This can be the case for systems with virtual
+    memory, where VM pages can be swapped out to slow media.
+    Heap pages can be mapped to VM pages if PageChunks is calculated using
+    the following formula:
+    * PageChunks = sizeof(VM_page) / (sizeof(item) * Fanout)
+    Perfrect alginment between VM pages and heap pages can be achieved if
+    heap's root item is placed at the end of VM page. In this case the first
+    child of the heap's root (i.e. the item with index 1) sits at the beginning
+    of the next VM page.
+
+
+The implementation provides the following functions:
+* Auxiliary functions:
+  * get_parent_index() - returns parent index for the given child.
+  * get_child_index() - returns the first child index for the given parent.
+
+* STL-like functions:
+  * is_heap_until() - returns an iterator to the first non-heap item
+    in the given range.
+  * is_heap() - checks whether the given range contains valid heap.
+  * make_heap() - creates a heap.
+  * push_heap() - pushes the last element in the range to the heap.
+  * pop_heap() - pops up the first element in the range from the heap.
+  * sort_heap() - sorts heap items in ascending order.
+
+
+The implementation is inspired by http://queue.acm.org/detail.cfm?id=1814327 ,
+but it is more generalized. The implementation is optimized for speed.
+There are two header files:
+* gheap_cpp03.hpp - gheap optimized for C++03.
+* gheap_cpp11.hpp - gheap optimized for C++11.
+
