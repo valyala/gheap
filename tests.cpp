@@ -9,7 +9,6 @@
 #  include "gheap_cpp03.hpp"
 #endif
 
-#include <algorithm>  // for std::*_heap()
 #include <cstdlib>    // for srand(), rand()
 #include <iostream>   // for cout
 #include <vector>
