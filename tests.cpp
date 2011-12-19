@@ -350,4 +350,6 @@ int main()
   test_all<3, 101>();
   test_all<4, 101>();
   test_all<101, 101>();
+
+  cout << "All tests DONE" << endl;
 }
