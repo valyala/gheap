@@ -2,7 +2,7 @@
 #define GHEAP_H
 
 // Generalized heap implementation for C++11.
-// Compiler must support the following C++11 features for this implementation:
+// The implementation requires the following C++11 features:
 // - <cstdint> must contain SIZE_MAX definition.
 // - std::move() support. The implementation relies on move constructors
 //   and move assignment operators, so define them for classes with expensive
@@ -21,7 +21,7 @@
 #include <iterator>    // for std::iterator_traits
 #include <utility>     // for std::move()
 
-template<size_t Fanout, size_t PageChunks = 1>
+template <size_t Fanout, size_t PageChunks = 1>
 class gheap
 {
 public:
@@ -121,7 +121,7 @@ private:
 
   // Sifts the item up in the given sub-heap with the given root_index
   // starting from the hole_index.
-  template<class RandomAccessIterator, class LessComparer>
+  template <class RandomAccessIterator, class LessComparer>
   static void _sift_up(const RandomAccessIterator &first,
       const LessComparer &less_comparer,
       const size_t root_index, size_t hole_index,
@@ -148,7 +148,7 @@ private:
 
   // Moves the max child into the given hole and returns index
   // of the new hole.
-  template<class RandomAccessIterator, class LessComparer>
+  template <class RandomAccessIterator, class LessComparer>
   static size_t _move_up_max_child(const RandomAccessIterator &first,
       const LessComparer &less_comparer, const size_t children_count,
       const size_t hole_index, const size_t child_index)
@@ -173,7 +173,7 @@ private:
 
   // Sifts the given item down in the heap of the given size starting
   // from the hole_index.
-  template<class RandomAccessIterator, class LessComparer>
+  template <class RandomAccessIterator, class LessComparer>
   static void _sift_down(const RandomAccessIterator &first,
       const LessComparer &less_comparer,
       const size_t size, size_t hole_index,

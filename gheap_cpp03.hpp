@@ -24,7 +24,7 @@
 #  define SIZE_MAX     (~(size_t)0)
 #endif
 
-template<size_t Fanout, size_t PageChunks = 1>
+template <size_t Fanout, size_t PageChunks = 1>
 class gheap
 {
 public:
@@ -123,7 +123,7 @@ private:
 
   // Sifts the item up in the given sub-heap with the given root_index
   // starting from the item_index.
-  template<class RandomAccessIterator, class LessComparer>
+  template <class RandomAccessIterator, class LessComparer>
   static void _sift_up(const RandomAccessIterator &first,
       const LessComparer &less_comparer,
       const size_t root_index, size_t item_index)
@@ -148,7 +148,7 @@ private:
 
   // Swaps the max child with the item at item_index and returns index
   // of the max child.
-  template<class RandomAccessIterator, class LessComparer>
+  template <class RandomAccessIterator, class LessComparer>
   static size_t _move_up_max_child(const RandomAccessIterator &first,
       const LessComparer &less_comparer, const size_t children_count,
       const size_t item_index, const size_t child_index)
@@ -173,7 +173,7 @@ private:
 
   // Sifts the given item down in the heap of the given size starting
   // from the item_index.
-  template<class RandomAccessIterator, class LessComparer>
+  template <class RandomAccessIterator, class LessComparer>
   static void _sift_down(const RandomAccessIterator &first,
       const LessComparer &less_comparer,
       const size_t size, size_t item_index)
