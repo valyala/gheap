@@ -388,12 +388,10 @@ public:
 
     const size_t item_index = item - first;
     if (item_index > 0) {
-      assert(is_heap(first, item - 1, less_comparer));
-
       _sift_up(first, less_comparer, 0, item_index);
-
-      assert(is_heap(first, item + 1, less_comparer));
     }
+
+    assert(is_heap(first, item + 1, less_comparer));
   }
 
   // Restores max heap invariant after item's value has been increased,
@@ -424,7 +422,7 @@ public:
     assert(is_heap(first, last, less_comparer));
   }
 
-  // Restores max heap invariang after item's value has been decreased,
+  // Restores max heap invariant after item's value has been decreased,
   // i.e. new_item < old_item.
   template <class RandomAccessIterator>
   static void restore_heap_after_item_decrease(
@@ -432,6 +430,43 @@ public:
       const RandomAccessIterator &last)
   {
     restore_heap_after_item_decrease(first, item, last,
+        _std_less_comparer<RandomAccessIterator>);
+  }
+
+  // Removes the given item from the heap and puts it into *(last - 1).
+  // less_comparer is used for items' comparison.
+  template <class RandomAccessIterator, class LessComparer>
+  static void remove_from_heap(const RandomAccessIterator &first,
+      const RandomAccessIterator &item, const RandomAccessIterator &last,
+      const LessComparer &less_comparer)
+  {
+    assert(last > first);
+    assert(item >= first);
+    assert(item < last);
+    assert(is_heap(first, last, less_comparer));
+
+    const size_t size = last - first;
+    const size_t item_index = item - first;
+    if (item_index < size - 1) {
+      std::swap(*item, first[size - 1]);
+      if (less_comparer(*item, first[size - 1])) {
+        _sift_down(first, less_comparer, size - 1, item_index);
+      }
+      else {
+        _sift_up(first, less_comparer, 0, item_index);
+      }
+    }
+
+    assert(is_heap(first, last - 1, less_comparer));
+  }
+
+  // Removes the given item from the heap and puts it into *(last - 1).
+  // operator< is used for items' comparison.
+  template <class RandomAccessIterator>
+  static void remove_from_heap(const RandomAccessIterator &first,
+      const RandomAccessIterator &item, const RandomAccessIterator &last)
+  {
+    remove_from_heap(first, item, last,
         _std_less_comparer<RandomAccessIterator>);
   }
 };

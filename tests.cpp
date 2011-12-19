@@ -250,6 +250,26 @@ void test_restore_heap_after_item_decrease(const size_t n)
       Fanout << ", PageChunks=" << PageChunks << ") OK" << endl;
 }
 
+template <size_t Fanout, size_t PageChunks>
+void test_remove_from_heap(const size_t n)
+{
+  typedef gheap<Fanout, PageChunks> heap;
+
+  vector<int> a;
+  init_array(&a, n);
+
+  heap::make_heap(a.begin(), a.end());
+  assert(heap::is_heap(a.begin(), a.end()));
+  for (size_t i = 0; i < n; ++i) {
+    const size_t item_index = rand() % (n - i);
+    heap::remove_from_heap(a.begin(), a.begin() + item_index, a.end() - i);
+    assert(heap::is_heap(a.begin(), a.end() - i - 1));
+  }
+
+  cout << "test_remove_from_heap(n=" << n << ", Fanout=" << Fanout <<
+      ", PageChunks=" << PageChunks << ") OK" << endl;
+}
+
 // Runs all tests for the given Fanout and PageChunks.
 template <size_t Fanout, size_t PageChunks>
 void test_all()
@@ -263,12 +283,13 @@ void test_all()
   test_is_heap<Fanout, PageChunks>(1);
   test_is_heap<Fanout, PageChunks>(2);
   test_is_heap<Fanout, PageChunks>(3);
-  test_is_heap<Fanout, PageChunks>(100000);
+  test_is_heap<Fanout, PageChunks>(1000);
 
   test_heapsort<Fanout, PageChunks>(1);
   test_heapsort<Fanout, PageChunks>(2);
   test_heapsort<Fanout, PageChunks>(3);
-  test_heapsort<Fanout, PageChunks>(100000);
+  // heapsort for Fanout = 1 is slow, so sort less items.
+  test_heapsort<Fanout, PageChunks>(Fanout > 1 ? 100000 : 1000);
 
   test_push_heap<Fanout, PageChunks>(1);
   test_push_heap<Fanout, PageChunks>(2);
@@ -289,79 +310,42 @@ void test_all()
   test_restore_heap_after_item_decrease<Fanout, PageChunks>(2);
   test_restore_heap_after_item_decrease<Fanout, PageChunks>(3);
   test_restore_heap_after_item_decrease<Fanout, PageChunks>(1000);
-}
 
-// Use smaller array sizes for Fanout = 1, since heap operations on list
-// are slow.
-template <size_t PageChunks>
-void test_all_fanout_1()
-{
-  // Verify parent-child calculations for indexes close to zero and
-  // indexes close to SIZE_MAX.
-  static const size_t n = 1000000;
-  test_parent_child<1, PageChunks>(1, n);
-  test_parent_child<1, PageChunks>(SIZE_MAX - n, n);
-
-  test_is_heap<1, PageChunks>(1);
-  test_is_heap<1, PageChunks>(2);
-  test_is_heap<1, PageChunks>(3);
-  test_is_heap<1, PageChunks>(1000);
-
-  test_heapsort<1, PageChunks>(1);
-  test_heapsort<1, PageChunks>(2);
-  test_heapsort<1, PageChunks>(3);
-  test_heapsort<1, PageChunks>(1000);
-
-  test_push_heap<1, PageChunks>(1);
-  test_push_heap<1, PageChunks>(2);
-  test_push_heap<1, PageChunks>(3);
-  test_push_heap<1, PageChunks>(1000);
-
-  test_pop_heap<1, PageChunks>(1);
-  test_pop_heap<1, PageChunks>(2);
-  test_pop_heap<1, PageChunks>(3);
-  test_pop_heap<1, PageChunks>(1000);
-
-  test_restore_heap_after_item_increase<1, PageChunks>(1);
-  test_restore_heap_after_item_increase<1, PageChunks>(2);
-  test_restore_heap_after_item_increase<1, PageChunks>(3);
-  test_restore_heap_after_item_increase<1, PageChunks>(1000);
-
-  test_restore_heap_after_item_decrease<1, PageChunks>(1);
-  test_restore_heap_after_item_decrease<1, PageChunks>(2);
-  test_restore_heap_after_item_decrease<1, PageChunks>(3);
-  test_restore_heap_after_item_decrease<1, PageChunks>(1000);
+  test_remove_from_heap<Fanout, PageChunks>(1);
+  test_remove_from_heap<Fanout, PageChunks>(2);
+  test_remove_from_heap<Fanout, PageChunks>(3);
+  test_remove_from_heap<Fanout, PageChunks>(1000);
 }
 
 }  // End of anonymous namespace.
 
 int main()
 {
-  test_all_fanout_1<1>();
+  test_all<1, 1>();
   test_all<2, 1>();
   test_all<3, 1>();
   test_all<4, 1>();
   test_all<101, 1>();
 
-  test_all_fanout_1<2>();
+  test_all<1, 2>();
   test_all<2, 2>();
   test_all<3, 2>();
   test_all<4, 2>();
   test_all<101, 2>();
 
-  test_all_fanout_1<3>();
+  test_all<1, 3>();
   test_all<2, 3>();
   test_all<3, 3>();
   test_all<4, 3>();
   test_all<101, 3>();
 
-  test_all_fanout_1<4>();
+  test_all<1, 4>();
   test_all<2, 4>();
   test_all<3, 4>();
   test_all<4, 4>();
   test_all<101, 4>();
 
-  test_all_fanout_1<101>();
+  test_all<1, 101>();
   test_all<2, 101>();
   test_all<3, 101>();
   test_all<4, 101>();

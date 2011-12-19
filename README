@@ -42,6 +42,7 @@ The implementation provides the following functions:
     the item's value has been increased.
   * restore_heap_after_item_decrease() - restores max heap invariant after
     the item's value has been decreased.
+  * remove_from_heap() - removes the given item from the heap.
 
 * STL-like functions:
   * is_heap_until() - returns an iterator to the first non-heap item
