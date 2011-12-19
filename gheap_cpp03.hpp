@@ -171,7 +171,8 @@ private:
     return child_index + j;
   }
 
-  // Sifts the given item down in the heap of the given size.
+  // Sifts the given item down in the heap of the given size starting
+  // from the item_index.
   template<class RandomAccessIterator, class LessComparer>
   static void _sift_down(const RandomAccessIterator &first,
       const LessComparer &less_comparer,
@@ -241,7 +242,7 @@ public:
     return last;
   }
 
-  // Returns an iterrator for the first non-heap item in the range
+  // Returns an iterator for the first non-heap item in the range
   // [first ... last - 1) using operator< for items' comparison.
   // Returns last if the range contains valid max heap.
   template <class RandomAccessIterator>
