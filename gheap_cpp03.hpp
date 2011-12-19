@@ -230,7 +230,7 @@ public:
       const RandomAccessIterator &first, const RandomAccessIterator &last,
       const LessComparer &less_comparer)
   {
-    assert(first <= last);
+    assert(last >= first);
 
     const size_t size = last - first;
     for (size_t u = 1; u < size; ++u) {
@@ -375,6 +375,64 @@ public:
     const RandomAccessIterator &last)
   {
     sort_heap(first, last, _std_less_comparer<RandomAccessIterator>);
+  }
+
+  // Restores max heap invariant after item's value has been increased,
+  // i.e. less_comparer(old_item, new_item) == true.
+  template <class RandomAccessIterator, class LessComparer>
+  static void restore_heap_after_item_increase(
+      const RandomAccessIterator &first, const RandomAccessIterator &item,
+      const LessComparer &less_comparer)
+  {
+    assert(item >= first);
+
+    const size_t item_index = item - first;
+    if (item_index > 0) {
+      assert(is_heap(first, item - 1, less_comparer));
+
+      _sift_up(first, less_comparer, 0, item_index);
+
+      assert(is_heap(first, item + 1, less_comparer));
+    }
+  }
+
+  // Restores max heap invariant after item's value has been increased,
+  // i.e. old_item < new_item.
+  template <class RandomAccessIterator>
+  static void restore_heap_after_item_increase(
+      const RandomAccessIterator &first, const RandomAccessIterator &item)
+  {
+    restore_heap_after_item_increase(first, item,
+        _std_less_comparer<RandomAccessIterator>);
+  }
+
+  // Restores max heap invariant after item's value has been decreased,
+  // i.e. less_comparer(new_item, old_item) == true.
+  template <class RandomAccessIterator, class LessComparer>
+  static void restore_heap_after_item_decrease(
+      const RandomAccessIterator &first, const RandomAccessIterator &item,
+      const RandomAccessIterator &last, const LessComparer &less_comparer)
+  {
+    assert(last > first);
+    assert(item >= first);
+    assert(item < last);
+
+    const size_t size = last - first;
+    const size_t item_index = item - first;
+    _sift_down(first, less_comparer, size, item_index);
+
+    assert(is_heap(first, last, less_comparer));
+  }
+
+  // Restores max heap invariang after item's value has been decreased,
+  // i.e. new_item < old_item.
+  template <class RandomAccessIterator>
+  static void restore_heap_after_item_decrease(
+      const RandomAccessIterator &first, const RandomAccessIterator &item,
+      const RandomAccessIterator &last)
+  {
+    restore_heap_after_item_decrease(first, item, last,
+        _std_less_comparer<RandomAccessIterator>);
   }
 };
 

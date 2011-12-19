@@ -38,6 +38,10 @@ The implementation provides the following functions:
 * Auxiliary functions:
   * get_parent_index() - returns parent index for the given child.
   * get_child_index() - returns the first child index for the given parent.
+  * restore_heap_after_item_increase() - restores max heap invariant after
+    the item's value has been increased.
+  * restore_heap_after_item_decrease() - restores max heap invariant after
+    the item's value has been decreased.
 
 * STL-like functions:
   * is_heap_until() - returns an iterator to the first non-heap item

@@ -98,7 +98,7 @@ void init_array(vector<int> *const a, const size_t n)
 
 // Verifies that items in the given range are sorted in ascending order.
 template <class RandomAccessIterator>
-void assert_sorted(const RandomAccessIterator &first,
+void assert_sorted_asc(const RandomAccessIterator &first,
     const RandomAccessIterator &last)
 {
   assert(last > first);
@@ -109,19 +109,45 @@ void assert_sorted(const RandomAccessIterator &first,
   }
 }
 
-// Verifies correctness of heapsort built on top of "make_heap(), build_heap()".
+// Verifies that items in the given range are sorted in descending order.
+template <class RandomAccessIterator>
+void assert_sorted_desc(const RandomAccessIterator &first,
+    const RandomAccessIterator &last)
+{
+  assert(last > first);
+
+  const size_t size = last - first;
+  for (size_t i = 1; i < size; ++i) {
+    assert(first[i] <= first[i - 1]);
+  }
+}
+
+bool inverse_less_comparer(const int a, const int b)
+{
+  return (b < a);
+}
+
+// Verifies correctness of heapsort built on top of "make_heap(); build_heap()".
 template <size_t Fanout, size_t PageChunks>
 void test_heapsort(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
 
   vector<int> a;
-  init_array(&a, n);
 
+  // Verify ascending sorting with default less_comparer.
+  init_array(&a, n);
   heap::make_heap(a.begin(), a.end());
   assert(heap::is_heap(a.begin(), a.end()));
   heap::sort_heap(a.begin(), a.end());
-  assert_sorted(a.begin(), a.end());
+  assert_sorted_asc(a.begin(), a.end());
+
+  // Verify descending sorting with custom less_comparer.
+  init_array(&a, n);
+  heap::make_heap(a.begin(), a.end(), inverse_less_comparer);
+  assert(heap::is_heap(a.begin(), a.end(), inverse_less_comparer));
+  heap::sort_heap(a.begin(), a.end(), inverse_less_comparer);
+  assert_sorted_desc(a.begin(), a.end());
 
   cout << "test_heapsort(n=" << n << ", Fanout=" << Fanout << ", PageChunks=" <<
       PageChunks << ") OK" << endl;
@@ -158,10 +184,71 @@ void test_pop_heap(const size_t n)
   for (size_t i = 0; i < n; ++i) {
     heap::pop_heap(a.begin(), a.end() - i);
   }
-  assert_sorted(a.begin(), a.end());
+  assert_sorted_asc(a.begin(), a.end());
 
   cout << "test_pop_heap(n=" << n << ", Fanout=" << Fanout <<
       ", PageChunks=" << PageChunks << ") OK" << endl;
+}
+
+// Verifies restore_heap_after_item_increase() correctness.
+template <size_t Fanout, size_t PageChunks>
+void test_restore_heap_after_item_increase(const size_t n)
+{
+  typedef gheap<Fanout, PageChunks> heap;
+
+  vector<int> a;
+  init_array(&a, n);
+
+  heap::make_heap(a.begin(), a.end());
+  assert(heap::is_heap(a.begin(), a.end()));
+  for (size_t i = 0; i < n; ++i) {
+    const size_t item_index = rand() % n;
+    const int old_item = a[item_index];
+
+    // Don't allow integer overflow.
+    size_t fade = SIZE_MAX;
+    do {
+      // Division by zero is impossible here.
+      a[item_index] = old_item + rand() % fade;
+      fade /= 2;
+    } while (a[item_index] < old_item);
+    heap::restore_heap_after_item_increase(a.begin(), a.begin() + item_index);
+    assert(heap::is_heap(a.begin(), a.end()));
+  }
+
+  cout << "test_restore_heap_after_item_increase(n=" << n << ", Fanout=" <<
+      Fanout << ", PageChunks=" << PageChunks << ") OK" << endl;
+}
+
+// Verifies restore_heap_after_item_decrease() correctness.
+template <size_t Fanout, size_t PageChunks>
+void test_restore_heap_after_item_decrease(const size_t n)
+{
+  typedef gheap<Fanout, PageChunks> heap;
+
+  vector<int> a;
+  init_array(&a, n);
+
+  heap::make_heap(a.begin(), a.end());
+  assert(heap::is_heap(a.begin(), a.end()));
+  for (size_t i = 0; i < n; ++i) {
+    const size_t item_index = rand() % n;
+    const int old_item = a[item_index];
+
+    // Don't allow integer underflow.
+    size_t fade = SIZE_MAX;
+    do {
+      // Division by zero is impossible here.
+      a[item_index] = old_item - rand() % fade;
+      fade /= 2;
+    } while (a[item_index] > old_item);
+    heap::restore_heap_after_item_decrease(a.begin(), a.begin() + item_index,
+        a.end());
+    assert(heap::is_heap(a.begin(), a.end()));
+  }
+
+  cout << "test_restore_heap_after_item_decrease(n=" << n << ", Fanout=" <<
+      Fanout << ", PageChunks=" << PageChunks << ") OK" << endl;
 }
 
 // Runs all tests for the given Fanout and PageChunks.
@@ -193,6 +280,16 @@ void test_all()
   test_pop_heap<Fanout, PageChunks>(2);
   test_pop_heap<Fanout, PageChunks>(3);
   test_pop_heap<Fanout, PageChunks>(1000);
+
+  test_restore_heap_after_item_increase<Fanout, PageChunks>(1);
+  test_restore_heap_after_item_increase<Fanout, PageChunks>(2);
+  test_restore_heap_after_item_increase<Fanout, PageChunks>(3);
+  test_restore_heap_after_item_increase<Fanout, PageChunks>(1000);
+
+  test_restore_heap_after_item_decrease<Fanout, PageChunks>(1);
+  test_restore_heap_after_item_decrease<Fanout, PageChunks>(2);
+  test_restore_heap_after_item_decrease<Fanout, PageChunks>(3);
+  test_restore_heap_after_item_decrease<Fanout, PageChunks>(1000);
 }
 
 // Use smaller array sizes for Fanout = 1, since heap operations on list
@@ -225,6 +322,16 @@ void test_all_fanout_1()
   test_pop_heap<1, PageChunks>(2);
   test_pop_heap<1, PageChunks>(3);
   test_pop_heap<1, PageChunks>(1000);
+
+  test_restore_heap_after_item_increase<1, PageChunks>(1);
+  test_restore_heap_after_item_increase<1, PageChunks>(2);
+  test_restore_heap_after_item_increase<1, PageChunks>(3);
+  test_restore_heap_after_item_increase<1, PageChunks>(1000);
+
+  test_restore_heap_after_item_decrease<1, PageChunks>(1);
+  test_restore_heap_after_item_decrease<1, PageChunks>(2);
+  test_restore_heap_after_item_decrease<1, PageChunks>(3);
+  test_restore_heap_after_item_decrease<1, PageChunks>(1000);
 }
 
 }  // End of anonymous namespace.
