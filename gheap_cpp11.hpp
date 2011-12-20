@@ -213,7 +213,7 @@ private:
           value_type;
 
       value_type item = std::move(first[item_index]);
-      first[item_index] = std::move(first[0]);
+      _move(first[item_index], first[0]);
       _sift_down(first, less_comparer, item_index, 0, item);
   }
 
@@ -474,7 +474,7 @@ public:
     const size_t hole_index = item - first;
     if (hole_index < size - 1) {
       value_type tmp = std::move(first[size - 1]);
-      first[size - 1] = std::move(*item);
+      _move(first[size - 1], *item);
       if (less_comparer(tmp, first[size - 1])) {
         _sift_down(first, less_comparer, size - 1, hole_index, tmp);
       }

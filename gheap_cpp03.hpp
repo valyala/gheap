@@ -448,7 +448,7 @@ public:
     const size_t size = last - first;
     const size_t item_index = item - first;
     if (item_index < size - 1) {
-      std::swap(*item, first[size - 1]);
+      _swap(*item, first[size - 1]);
       if (less_comparer(*item, first[size - 1])) {
         _sift_down(first, less_comparer, size - 1, item_index);
       }
