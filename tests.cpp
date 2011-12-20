@@ -181,7 +181,9 @@ void test_pop_heap(const size_t n)
   heap::make_heap(a.begin(), a.end());
   assert(heap::is_heap(a.begin(), a.end()));
   for (size_t i = 0; i < n; ++i) {
+    const int item = a[0];
     heap::pop_heap(a.begin(), a.end() - i);
+    assert(item == *(a.end() - i - 1));
   }
   assert_sorted_asc(a.begin(), a.end());
 
@@ -262,8 +264,10 @@ void test_remove_from_heap(const size_t n)
   assert(heap::is_heap(a.begin(), a.end()));
   for (size_t i = 0; i < n; ++i) {
     const size_t item_index = rand() % (n - i);
+    const int item = a[item_index];
     heap::remove_from_heap(a.begin(), a.begin() + item_index, a.end() - i);
     assert(heap::is_heap(a.begin(), a.end() - i - 1));
+    assert(item == *(a.end() - i - 1));
   }
 
   cout << "test_remove_from_heap(n=" << n << ", Fanout=" << Fanout <<
