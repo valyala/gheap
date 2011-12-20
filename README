@@ -60,6 +60,9 @@ There are two header files:
 * gheap_cpp03.hpp - gheap optimized for C++03.
 * gheap_cpp11.hpp - gheap optimized for C++11.
 
+Don't forget passing -DNDEBUG option to the compiler when creating optimized
+builds. This significantly speeds up gheap code by removing debug assertions.
+
 
 Usage.
 

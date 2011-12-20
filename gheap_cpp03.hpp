@@ -12,6 +12,9 @@
 // The implementation for C++11 is usually faster than the implementation
 // for C++03.
 //
+// Don't forget passing -DNDEBUG option to the compiler when creating optimized
+// builds. This significantly speeds up gheap code by removing debug assertions.
+//
 // Author: Aliaksandr Valialkin <valyala@gmail.com>.
 
 #include <algorithm>   // for std::swap()
