@@ -19,7 +19,6 @@ using namespace std;
 
 namespace {
 
-// Verifies correctness of parent and child index calculations.
 template <size_t Fanout, size_t PageChunks>
 void test_parent_child(const size_t start_index, const size_t n)
 {
@@ -49,7 +48,6 @@ void test_parent_child(const size_t start_index, const size_t n)
   cout << "OK" << endl;
 }
 
-// Verifies is_heap_until() and is_heap() correctness.
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_is_heap(const size_t n)
 {
@@ -91,12 +89,10 @@ void test_is_heap(const size_t n)
   cout << "OK" << endl;
 }
 
-// Fills the given array with n random integers.
 template <class IntContainer>
 void init_array(IntContainer *const a, const size_t n)
 {
   a->clear();
-//  a->reserve(n);
 
   srand(0);
   for (size_t i = 0; i < n; ++i) {
@@ -104,7 +100,6 @@ void init_array(IntContainer *const a, const size_t n)
   }
 }
 
-// Verifies that items in the given range are sorted in ascending order.
 template <class RandomAccessIterator>
 void assert_sorted_asc(const RandomAccessIterator &first,
     const RandomAccessIterator &last)
@@ -117,7 +112,6 @@ void assert_sorted_asc(const RandomAccessIterator &first,
   }
 }
 
-// Verifies that items in the given range are sorted in descending order.
 template <class RandomAccessIterator>
 void assert_sorted_desc(const RandomAccessIterator &first,
     const RandomAccessIterator &last)
@@ -135,7 +129,6 @@ bool inverse_less_comparer(const int a, const int b)
   return (b < a);
 }
 
-// Verifies correctness of heapsort built on top of "make_heap(); build_heap()".
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_heapsort(const size_t n)
 {
@@ -162,7 +155,6 @@ void test_heapsort(const size_t n)
   cout << "OK" << endl;
 }
 
-// Verifies push_heap() correctness.
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_push_heap(const size_t n)
 {
@@ -203,7 +195,6 @@ void test_pop_heap(const size_t n)
   cout << "OK" << endl;
 }
 
-// Verifies restore_heap_after_item_increase() correctness.
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_restore_heap_after_item_increase(const size_t n)
 {
@@ -234,7 +225,6 @@ void test_restore_heap_after_item_increase(const size_t n)
   cout << "OK" << endl;
 }
 
-// Verifies restore_heap_after_item_decrease() correctness.
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_restore_heap_after_item_decrease(const size_t n)
 {
@@ -266,7 +256,6 @@ void test_restore_heap_after_item_decrease(const size_t n)
   cout << "OK" << endl;
 }
 
-// Verifies remove_from_heap() correctness.
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_remove_from_heap(const size_t n)
 {
