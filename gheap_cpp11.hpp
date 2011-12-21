@@ -473,13 +473,13 @@ public:
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         value_type;
 
-    const size_t size = last - first;
+    const size_t new_size = last - first - 1;
     const size_t hole_index = item - first;
-    if (hole_index < size - 1) {
-      value_type tmp = std::move(first[size - 1]);
-      _move(first[size - 1], *item);
-      if (less_comparer(tmp, first[size - 1])) {
-        _sift_down(first, less_comparer, size - 1, hole_index, tmp);
+    if (hole_index < new_size) {
+      value_type tmp = std::move(first[new_size]);
+      _move(first[new_size], *item);
+      if (less_comparer(tmp, first[new_size])) {
+        _sift_down(first, less_comparer, new_size, hole_index, tmp);
       }
       else {
         _sift_up(first, less_comparer, 0, hole_index, tmp);

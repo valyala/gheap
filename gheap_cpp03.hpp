@@ -448,12 +448,12 @@ public:
     assert(item < last);
     assert(is_heap(first, last, less_comparer));
 
-    const size_t size = last - first;
+    const size_t new_size = last - first - 1;
     const size_t item_index = item - first;
-    if (item_index < size - 1) {
-      _swap(*item, first[size - 1]);
-      if (less_comparer(*item, first[size - 1])) {
-        _sift_down(first, less_comparer, size - 1, item_index);
+    if (item_index < new_size) {
+      _swap(*item, first[new_size]);
+      if (less_comparer(*item, first[new_size])) {
+        _sift_down(first, less_comparer, new_size, item_index);
       }
       else {
         _sift_up(first, less_comparer, 0, item_index);
