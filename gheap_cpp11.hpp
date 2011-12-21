@@ -179,26 +179,26 @@ private:
   template <class RandomAccessIterator, class LessComparer>
   static void _sift_down(const RandomAccessIterator &first,
       const LessComparer &less_comparer,
-      const size_t size, size_t hole_index,
+      const size_t heap_size, size_t hole_index,
       const typename std::iterator_traits<RandomAccessIterator>::value_type
           &item)
   {
-    assert(size > 0);
-    assert(hole_index < size);
+    assert(heap_size > 0);
+    assert(hole_index < heap_size);
 
     const size_t root_index = hole_index;
-    const size_t remaining_items = (size - 1) % Fanout;
+    const size_t remaining_items = (heap_size - 1) % Fanout;
     while (true) {
       const size_t child_index = get_child_index(hole_index);
-      if (child_index >= size - remaining_items) {
-        if (child_index < size) {
-          assert(size - child_index == remaining_items);
+      if (child_index >= heap_size - remaining_items) {
+        if (child_index < heap_size) {
+          assert(heap_size - child_index == remaining_items);
           hole_index = _move_up_max_child(first, less_comparer, remaining_items,
               hole_index, child_index);
         }
         break;
       }
-      assert(size - child_index >= Fanout);
+      assert(heap_size - child_index >= Fanout);
       hole_index = _move_up_max_child(first, less_comparer, Fanout,
           hole_index, child_index);
     }
@@ -208,16 +208,17 @@ private:
   // Pops the maximum item from the heap into first[item_index].
   template <class RandomAccessIterator, class LessComparer>
   static void _pop_heap(const RandomAccessIterator &first,
-      const LessComparer &less_comparer, const size_t item_index)
+      const LessComparer &less_comparer, const size_t heap_size)
   {
-      assert(item_index > 0);
+      assert(heap_size > 1);
 
       typedef typename std::iterator_traits<RandomAccessIterator>::value_type
           value_type;
 
-      value_type item = std::move(first[item_index]);
-      _move(first[item_index], first[0]);
-      _sift_down(first, less_comparer, item_index, 0, item);
+      const size_t hole_index = heap_size - 1;
+      value_type item = std::move(first[hole_index]);
+      _move(first[hole_index], first[0]);
+      _sift_down(first, less_comparer, hole_index, 0, item);
   }
 
   // Standard less comparer.
@@ -241,8 +242,8 @@ public:
   {
     assert(last >= first);
 
-    const size_t size = last - first;
-    for (size_t u = 1; u < size; ++u) {
+    const size_t heap_size = last - first;
+    for (size_t u = 1; u < heap_size; ++u) {
       const size_t v = get_parent_index(u);
       if (less_comparer(first[v], first[u])) {
         return first + u;
@@ -292,12 +293,13 @@ public:
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         value_type;
 
-    const size_t size = last - first;
-    if (size > 1) {
-      size_t i = (PageChunks == 1) ? ((size - 2) / Fanout) : (size - 2);
+    const size_t heap_size = last - first;
+    if (heap_size > 1) {
+      size_t i = (PageChunks == 1) ? ((heap_size - 2) / Fanout) :
+          (heap_size - 2);
       do {
         value_type item = std::move(first[i]);
-        _sift_down(first, less_comparer, size, i, item);
+        _sift_down(first, less_comparer, heap_size, i, item);
       } while (i-- > 0);
     }
 
@@ -325,9 +327,9 @@ public:
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         value_type;
 
-    const size_t size = last - first;
-    if (size > 1) {
-      const size_t u = size - 1;
+    const size_t heap_size = last - first;
+    if (heap_size > 1) {
+      const size_t u = heap_size - 1;
       value_type item = std::move(first[u]);
       _sift_up(first, less_comparer, 0, u, item);
     }
@@ -353,9 +355,9 @@ public:
     assert(last > first);
     assert(is_heap(first, last, less_comparer));
 
-    const size_t size = last - first;
-    if (size > 1) {
-      _pop_heap(first, less_comparer, size - 1);
+    const size_t heap_size = last - first;
+    if (heap_size > 1) {
+      _pop_heap(first, less_comparer, heap_size);
     }
 
     assert(is_heap(first, last - 1, less_comparer));
@@ -379,9 +381,9 @@ public:
   {
     assert(last >= first);
 
-    const size_t size = last - first;
-    for (size_t i = size; i > 1; --i) {
-      _pop_heap(first, less_comparer, i - 1);
+    const size_t heap_size = last - first;
+    for (size_t i = heap_size; i > 1; --i) {
+      _pop_heap(first, less_comparer, i);
     }
   }
 
@@ -439,10 +441,10 @@ public:
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         value_type;
 
-    const size_t size = last - first;
+    const size_t heap_size = last - first;
     const size_t hole_index = item - first;
     value_type tmp = std::move(*item);
-    _sift_down(first, less_comparer, size, hole_index, tmp);
+    _sift_down(first, less_comparer, heap_size, hole_index, tmp);
 
     assert(is_heap(first, last, less_comparer));
   }
@@ -473,13 +475,13 @@ public:
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         value_type;
 
-    const size_t new_size = last - first - 1;
+    const size_t new_heap_size = last - first - 1;
     const size_t hole_index = item - first;
-    if (hole_index < new_size) {
-      value_type tmp = std::move(first[new_size]);
-      _move(first[new_size], *item);
-      if (less_comparer(tmp, first[new_size])) {
-        _sift_down(first, less_comparer, new_size, hole_index, tmp);
+    if (hole_index < new_heap_size) {
+      value_type tmp = std::move(first[new_heap_size]);
+      _move(first[new_heap_size], *item);
+      if (less_comparer(tmp, first[new_heap_size])) {
+        _sift_down(first, less_comparer, new_heap_size, hole_index, tmp);
       }
       else {
         _sift_up(first, less_comparer, 0, hole_index, tmp);
