@@ -232,7 +232,7 @@ private:
 public:
 
   // Returns an iterator for the first non-heap item in the range
-  // [first ... last - 1) using less_comparer for items' comparison.
+  // [first ... last) using less_comparer for items' comparison.
   // Returns last if the range contains valid max heap.
   template <class RandomAccessIterator, class LessComparer>
   static RandomAccessIterator is_heap_until(
@@ -252,7 +252,7 @@ public:
   }
 
   // Returns an iterator for the first non-heap item in the range
-  // [first ... last - 1) using operator< for items' comparison.
+  // [first ... last) using operator< for items' comparison.
   // Returns last if the range contains valid max heap.
   template <class RandomAccessIterator>
   static RandomAccessIterator is_heap_until(
@@ -261,7 +261,7 @@ public:
     return is_heap_until(first, last, _std_less_comparer<RandomAccessIterator>);
   }
 
-  // Returns true if the range [first ... last - 1) contains valid max heap.
+  // Returns true if the range [first ... last) contains valid max heap.
   // Returns false otherwise.
   // Uses less_comparer for items' comparison.
   template <class RandomAccessIterator, class LessComparer>
@@ -271,7 +271,7 @@ public:
     return (is_heap_until(first, last, less_comparer) == last);
   }
 
-  // Returns true if the range [first ... last - 1) contains valid max heap.
+  // Returns true if the range [first ... last) contains valid max heap.
   // Returns false otherwise.
   // Uses operator< for items' comparison.
   template <class RandomAccessIterator>
@@ -344,7 +344,7 @@ public:
     push_heap(first, last, _std_less_comparer<RandomAccessIterator>);
   }
 
-  // Pops the maximum item from max heap [first ... last - 1) into
+  // Pops the maximum item from max heap [first ... last) into
   // *(last - 1) using the given less_comparer for items' comparison.
   template <class RandomAccessIterator, class LessComparer>
   static void pop_heap(const RandomAccessIterator &first,
@@ -361,7 +361,7 @@ public:
     assert(is_heap(first, last - 1, less_comparer));
   }
 
-  // Pops the maximum item from max heap [first ... last - 1) into
+  // Pops the maximum item from max heap [first ... last) into
   // *(last - 1) using operator< for items' comparison.
   template <class RandomAccessIterator>
   static void pop_heap(const RandomAccessIterator &first,
@@ -370,7 +370,7 @@ public:
     pop_heap(first, last, _std_less_comparer<RandomAccessIterator>);
   }
 
-  // Sorts max heap [first ... last - 1) using the given less_comparer
+  // Sorts max heap [first ... last) using the given less_comparer
   // for items' comparison.
   // Items are sorted in ascending order.
   template <class RandomAccessIterator, class LessComparer>
@@ -385,7 +385,7 @@ public:
     }
   }
 
-  // Sorts max heap [first ... last - 1) using operator< for items' comparison.
+  // Sorts max heap [first ... last) using operator< for items' comparison.
   // Items are sorted in ascending order.
   template <class RandomAccessIterator>
   static void sort_heap(const RandomAccessIterator &first,
