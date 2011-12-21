@@ -4,6 +4,12 @@
  * Don't forget passing -DNDEBUG option to the compiler when creating optimized
  * builds. This significantly speeds up gheap code by removing debug assertions.
  *
+ * Also build and link gheap_c.c (gheap for C) with link-time optimizer
+ * turned on (-flto option for gcc). This will enable constant propagation
+ * optimization (see http://en.wikipedia.org/wiki/Constant_folding ) for fanout,
+ * page_chunks, item_size and less_comparer paremeters at link time. This should
+ * result in much faster code.
+ *
  * Author: Aliaksandr Valialkin <valyala@gmail.com>.
  */
 
@@ -111,7 +117,8 @@ static size_t _get_child_index(const size_t fanout, const size_t page_chunks,
 }
 
 size_t gheap_get_child_index(const size_t fanout, const size_t page_chunks,
-    size_t u) {
+    size_t u)
+{
   return _get_child_index(fanout, page_chunks, u);
 }
 
