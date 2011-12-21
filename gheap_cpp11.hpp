@@ -295,6 +295,9 @@ public:
 
     const size_t heap_size = last - first;
     if (heap_size > 1) {
+      // Skip leaf nodes without children. This is easy to do for non-paged
+      // heap, i.e. when page_chunks = 1, but it is difficult for paged heaps.
+      // So leaf nodes in paged heaps are visited anyway.
       size_t i = (PageChunks == 1) ? ((heap_size - 2) / Fanout) :
           (heap_size - 2);
       do {

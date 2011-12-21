@@ -1,4 +1,4 @@
-Generalized heap implementation.
+Generalized heap implementation
 
 Generalized heap is based on usual heap data structure -
 http://en.wikipedia.org/wiki/Heap_%28data_structure%29 .
@@ -34,6 +34,7 @@ for particular cases:
     of the next VM page.
 
 
+===============================================================================
 The implementation provides the following functions:
 * Auxiliary functions:
   * get_parent_index() - returns parent index for the given child.
@@ -56,15 +57,17 @@ The implementation provides the following functions:
 
 The implementation is inspired by http://queue.acm.org/detail.cfm?id=1814327 ,
 but it is more generalized. The implementation is optimized for speed.
-There are two header files:
+There are the following file:
 * gheap_cpp03.hpp - gheap optimized for C++03.
 * gheap_cpp11.hpp - gheap optimized for C++11.
+* gheap_c.c and gheap_c.h - gheap optimized for C99.
 
 Don't forget passing -DNDEBUG option to the compiler when creating optimized
 builds. This significantly speeds up gheap code by removing debug assertions.
 
 
-Usage.
+===============================================================================
+gheap for C++ usage
 
 #include "gheap_cpp11.hpp"
 
@@ -85,3 +88,30 @@ heapsort<d4_heap>(a);
 
 typedef gheap<2, 512> paged_binary_heap;
 heapsort<paged_binary_heap>(a);
+
+
+===============================================================================
+gheap for C usage
+
+#include "gheap_c.h"
+
+static void less(const void *const a, const void *const b)
+{
+  return *(int *)a < *(int *)b;
+}
+
+static void heapsort(const size_t fanout, const size_t page_chunks,
+    int *const a, const size_t n)
+{
+  gheap_make_heap(fanout, page_chunks, sizeof(*a), less, a, n);
+  gheap_sort_heap(fanout, page_chunks, sizeof(*a), less, a, n);
+}
+
+/* heapsort using binary heap */
+heapsort(2, 1, a, n);
+
+/* heapsort using D-4 heap */
+heapsort(4, 1, a, n);
+
+/* heapsort using paged binary heap */
+heapsort(2, 512, a, n);

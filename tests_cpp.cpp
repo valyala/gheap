@@ -1,4 +1,4 @@
-// Tests for gheap.
+// Tests for gheap_cpp*.
 //
 // Pass -DGHEAP_CPP11 to compiler for gheap_cpp11.hpp tests,
 // otherwise gheap_cpp03.hpp will be tested.
@@ -288,7 +288,6 @@ void test_func(const Func &func)
   func(1001);
 }
 
-// Runs all gheap tests for the given Fanout and PageChunks.
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_all()
 {
@@ -315,8 +314,6 @@ void test_all()
       ") OK" << endl;
 }
 
-// Runs all gheap tests on top of the given container with various Fanout
-// and PageChunks values.
 template <class IntContainer>
 void main_test(const char *const container_name)
 {
