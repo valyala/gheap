@@ -9,6 +9,7 @@
 #  include "gheap_cpp03.hpp"
 #endif
 
+#include <cassert>
 #include <cstdlib>    // for srand(), rand()
 #include <deque>
 #include <iostream>   // for cout
