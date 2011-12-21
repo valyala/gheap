@@ -32,7 +32,7 @@ class gheap
 {
 public:
 
-  // Returns the index of the parent for the given child index.
+  // Returns parent index for the given child index.
   // Child index must be greater than 0.
   // Returns 0 if the parent is root.
   static size_t get_parent_index(size_t u)
