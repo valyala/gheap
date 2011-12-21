@@ -10,6 +10,7 @@
 #endif
 
 #include <cstdlib>    // for srand(), rand()
+#include <deque>
 #include <iostream>   // for cout
 #include <vector>
 
@@ -26,6 +27,9 @@ void test_parent_child(const size_t start_index, const size_t n)
 
   typedef gheap<Fanout, PageChunks> heap;
 
+  cout << "    test_parent_child(start_index=" << start_index << ", n=" << n <<
+      ") ";
+
   for (size_t i = 0; i < n; ++i) {
     const size_t u = start_index + i;
     size_t v = heap::get_child_index(u);
@@ -41,19 +45,20 @@ void test_parent_child(const size_t start_index, const size_t n)
     assert(v <= u && u - v < Fanout);
   }
 
-  cout << "test_parent_child(start_index=" << start_index << ", n=" << n <<
-      ", Fanout=" << Fanout << ", PageChunks=" << PageChunks << ") OK" << endl;
+  cout << "OK" << endl;
 }
 
 // Verifies is_heap_until() and is_heap() correctness.
-template <size_t Fanout, size_t PageChunks>
+template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_is_heap(const size_t n)
 {
   assert(n > 0);
 
   typedef gheap<Fanout, PageChunks> heap;
 
-  vector<int> a;
+  cout << "    test_is_heap(n=" << n << ") ";
+
+  IntContainer a;
 
   // Verify that ascending sorted array creates one-item heap.
   a.clear();
@@ -81,13 +86,16 @@ void test_is_heap(const size_t n)
   }
   assert(heap::is_heap_until(a.begin(), a.end()) == a.end());
   assert(heap::is_heap(a.begin(), a.end()));
+
+  cout << "OK" << endl;
 }
 
 // Fills the given array with n random integers.
-void init_array(vector<int> *const a, const size_t n)
+template <class IntContainer>
+void init_array(IntContainer *const a, const size_t n)
 {
   a->clear();
-  a->reserve(n);
+//  a->reserve(n);
 
   srand(0);
   for (size_t i = 0; i < n; ++i) {
@@ -127,12 +135,14 @@ bool inverse_less_comparer(const int a, const int b)
 }
 
 // Verifies correctness of heapsort built on top of "make_heap(); build_heap()".
-template <size_t Fanout, size_t PageChunks>
+template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_heapsort(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
 
-  vector<int> a;
+  cout << "    test_heapsort(n=" << n << ") ";
+
+  IntContainer a;
 
   // Verify ascending sorting with default less_comparer.
   init_array(&a, n);
@@ -148,17 +158,18 @@ void test_heapsort(const size_t n)
   heap::sort_heap(a.begin(), a.end(), inverse_less_comparer);
   assert_sorted_desc(a.begin(), a.end());
 
-  cout << "test_heapsort(n=" << n << ", Fanout=" << Fanout << ", PageChunks=" <<
-      PageChunks << ") OK" << endl;
+  cout << "OK" << endl;
 }
 
 // Verifies push_heap() correctness.
-template <size_t Fanout, size_t PageChunks>
+template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_push_heap(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
 
-  vector<int> a;
+  cout << "    test_push_heap(n=" << n << ") ";
+
+  IntContainer a;
   init_array(&a, n);
 
   for (size_t i = 0; i < n; ++i) {
@@ -166,16 +177,17 @@ void test_push_heap(const size_t n)
   }
   assert(heap::is_heap(a.begin(), a.end()));
 
-  cout << "test_push_heap(n=" << n << ", Fanout=" << Fanout <<
-      ", PageChunks=" << PageChunks << ") OK" << endl;
+  cout << "OK" << endl;
 }
 
-template <size_t Fanout, size_t PageChunks>
+template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_pop_heap(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
 
-  vector<int> a;
+  cout << "    test_pop_heap(n=" << n << ") ";
+
+  IntContainer a;
   init_array(&a, n);
 
   heap::make_heap(a.begin(), a.end());
@@ -187,17 +199,18 @@ void test_pop_heap(const size_t n)
   }
   assert_sorted_asc(a.begin(), a.end());
 
-  cout << "test_pop_heap(n=" << n << ", Fanout=" << Fanout <<
-      ", PageChunks=" << PageChunks << ") OK" << endl;
+  cout << "OK" << endl;
 }
 
 // Verifies restore_heap_after_item_increase() correctness.
-template <size_t Fanout, size_t PageChunks>
+template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_restore_heap_after_item_increase(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
 
-  vector<int> a;
+  cout << "    test_restore_heap_after_item_increase(n=" << n << ") ";
+
+  IntContainer a;
   init_array(&a, n);
 
   heap::make_heap(a.begin(), a.end());
@@ -217,17 +230,18 @@ void test_restore_heap_after_item_increase(const size_t n)
     assert(heap::is_heap(a.begin(), a.end()));
   }
 
-  cout << "test_restore_heap_after_item_increase(n=" << n << ", Fanout=" <<
-      Fanout << ", PageChunks=" << PageChunks << ") OK" << endl;
+  cout << "OK" << endl;
 }
 
 // Verifies restore_heap_after_item_decrease() correctness.
-template <size_t Fanout, size_t PageChunks>
+template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_restore_heap_after_item_decrease(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
 
-  vector<int> a;
+  cout << "    test_resotre_heap_after_item_decrease(n=" << n << ") ";
+
+  IntContainer a;
   init_array(&a, n);
 
   heap::make_heap(a.begin(), a.end());
@@ -248,16 +262,18 @@ void test_restore_heap_after_item_decrease(const size_t n)
     assert(heap::is_heap(a.begin(), a.end()));
   }
 
-  cout << "test_restore_heap_after_item_decrease(n=" << n << ", Fanout=" <<
-      Fanout << ", PageChunks=" << PageChunks << ") OK" << endl;
+  cout << "OK" << endl;
 }
 
-template <size_t Fanout, size_t PageChunks>
+// Verifies remove_from_heap() correctness.
+template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_remove_from_heap(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
 
-  vector<int> a;
+  cout << "    test_remove_from_heap(n=" << n << ") ";
+
+  IntContainer a;
   init_array(&a, n);
 
   heap::make_heap(a.begin(), a.end());
@@ -270,90 +286,89 @@ void test_remove_from_heap(const size_t n)
     assert(item == *(a.end() - i - 1));
   }
 
-  cout << "test_remove_from_heap(n=" << n << ", Fanout=" << Fanout <<
-      ", PageChunks=" << PageChunks << ") OK" << endl;
+  cout << "OK" << endl;
 }
 
-// Runs all tests for the given Fanout and PageChunks.
-template <size_t Fanout, size_t PageChunks>
+template <class Func>
+void test_func(const Func &func)
+{
+  func(1);
+  func(2);
+  func(3);
+  func(1001);
+}
+
+// Runs all gheap tests for the given Fanout and PageChunks.
+template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_all()
 {
+  cout << "  test_all(Fanout=" << Fanout << ", PageChunks=" << PageChunks <<
+      ") start" << endl;
+
   // Verify parent-child calculations for indexes close to zero and
   // indexes close to SIZE_MAX.
   static const size_t n = 1000000;
   test_parent_child<Fanout, PageChunks>(1, n);
   test_parent_child<Fanout, PageChunks>(SIZE_MAX - n, n);
 
-  test_is_heap<Fanout, PageChunks>(1);
-  test_is_heap<Fanout, PageChunks>(2);
-  test_is_heap<Fanout, PageChunks>(3);
-  test_is_heap<Fanout, PageChunks>(1000);
+  test_func(test_is_heap<Fanout, PageChunks, IntContainer>);
+  test_func(test_heapsort<Fanout, PageChunks, IntContainer>);
+  test_func(test_push_heap<Fanout, PageChunks, IntContainer>);
+  test_func(test_pop_heap<Fanout, PageChunks, IntContainer>);
+  test_func(test_restore_heap_after_item_increase<Fanout, PageChunks,
+      IntContainer>);
+  test_func(test_restore_heap_after_item_decrease<Fanout, PageChunks,
+      IntContainer>);
+  test_func(test_remove_from_heap<Fanout, PageChunks, IntContainer>);
 
-  test_heapsort<Fanout, PageChunks>(1);
-  test_heapsort<Fanout, PageChunks>(2);
-  test_heapsort<Fanout, PageChunks>(3);
-  // heapsort for Fanout = 1 is slow, so sort less items.
-  test_heapsort<Fanout, PageChunks>(Fanout > 1 ? 100000 : 1000);
+  cout << "  test_all(Fanout=" << Fanout << ", PageChunks=" << PageChunks <<
+      ") OK" << endl;
+}
 
-  test_push_heap<Fanout, PageChunks>(1);
-  test_push_heap<Fanout, PageChunks>(2);
-  test_push_heap<Fanout, PageChunks>(3);
-  test_push_heap<Fanout, PageChunks>(1000);
+// Runs all gheap tests on top of the given container with various Fanout
+// and PageChunks values.
+template <class IntContainer>
+void main_test(const char *const container_name)
+{
+  cout << "main_test(" << container_name << ") start" << endl;
 
-  test_pop_heap<Fanout, PageChunks>(1);
-  test_pop_heap<Fanout, PageChunks>(2);
-  test_pop_heap<Fanout, PageChunks>(3);
-  test_pop_heap<Fanout, PageChunks>(1000);
+  test_all<1, 1, IntContainer>();
+  test_all<2, 1, IntContainer>();
+  test_all<3, 1, IntContainer>();
+  test_all<4, 1, IntContainer>();
+  test_all<101, 1, IntContainer>();
 
-  test_restore_heap_after_item_increase<Fanout, PageChunks>(1);
-  test_restore_heap_after_item_increase<Fanout, PageChunks>(2);
-  test_restore_heap_after_item_increase<Fanout, PageChunks>(3);
-  test_restore_heap_after_item_increase<Fanout, PageChunks>(1000);
+  test_all<1, 2, IntContainer>();
+  test_all<2, 2, IntContainer>();
+  test_all<3, 2, IntContainer>();
+  test_all<4, 2, IntContainer>();
+  test_all<101, 2, IntContainer>();
 
-  test_restore_heap_after_item_decrease<Fanout, PageChunks>(1);
-  test_restore_heap_after_item_decrease<Fanout, PageChunks>(2);
-  test_restore_heap_after_item_decrease<Fanout, PageChunks>(3);
-  test_restore_heap_after_item_decrease<Fanout, PageChunks>(1000);
+  test_all<1, 3, IntContainer>();
+  test_all<2, 3, IntContainer>();
+  test_all<3, 3, IntContainer>();
+  test_all<4, 3, IntContainer>();
+  test_all<101, 3, IntContainer>();
 
-  test_remove_from_heap<Fanout, PageChunks>(1);
-  test_remove_from_heap<Fanout, PageChunks>(2);
-  test_remove_from_heap<Fanout, PageChunks>(3);
-  test_remove_from_heap<Fanout, PageChunks>(1000);
+  test_all<1, 4, IntContainer>();
+  test_all<2, 4, IntContainer>();
+  test_all<3, 4, IntContainer>();
+  test_all<4, 4, IntContainer>();
+  test_all<101, 4, IntContainer>();
+
+  test_all<1, 101, IntContainer>();
+  test_all<2, 101, IntContainer>();
+  test_all<3, 101, IntContainer>();
+  test_all<4, 101, IntContainer>();
+  test_all<101, 101, IntContainer>();
+
+  cout << "main_test(" << container_name << ") OK" << endl;
 }
 
 }  // End of anonymous namespace.
 
 int main()
 {
-  test_all<1, 1>();
-  test_all<2, 1>();
-  test_all<3, 1>();
-  test_all<4, 1>();
-  test_all<101, 1>();
-
-  test_all<1, 2>();
-  test_all<2, 2>();
-  test_all<3, 2>();
-  test_all<4, 2>();
-  test_all<101, 2>();
-
-  test_all<1, 3>();
-  test_all<2, 3>();
-  test_all<3, 3>();
-  test_all<4, 3>();
-  test_all<101, 3>();
-
-  test_all<1, 4>();
-  test_all<2, 4>();
-  test_all<3, 4>();
-  test_all<4, 4>();
-  test_all<101, 4>();
-
-  test_all<1, 101>();
-  test_all<2, 101>();
-  test_all<3, 101>();
-  test_all<4, 101>();
-  test_all<101, 101>();
-
-  cout << "All tests DONE" << endl;
+  main_test<vector<int> >("vector");
+  main_test<deque<int> >("deque");
 }
