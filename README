@@ -66,16 +66,10 @@ but it is more generalized. The implementation is optimized for speed.
 There are the following file:
 * gheap_cpp03.hpp - gheap optimized for C++03.
 * gheap_cpp11.hpp - gheap optimized for C++11.
-* gheap_c.c and gheap_c.h - gheap optimized for C99.
+* gheap_c.h - gheap optimized for C99.
 
 Don't forget passing -DNDEBUG option to the compiler when creating optimized
 builds. This significantly speeds up gheap code by removing debug assertions.
-
-Also build and link gheap_c.c (gheap for C) with link-time optimizer turned on
-(-flto option for gcc). This will enable constant propagation optimization
-(see http://en.wikipedia.org/wiki/Constant_folding ) for fanout, page_chunks,
-item_size and less_comparer paremeters at link time. This should result in much
-faster code.
 
 ===============================================================================
 gheap for C++ usage
