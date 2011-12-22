@@ -63,21 +63,23 @@ The implementation provides the following functions:
 
 The implementation is inspired by http://queue.acm.org/detail.cfm?id=1814327 ,
 but it is more generalized. The implementation is optimized for speed.
-There are the following file:
+There are the following files:
 * gheap_cpp03.hpp - gheap optimized for C++03.
 * gheap_cpp11.hpp - gheap optimized for C++11.
-* gheap_c.h - gheap optimized for C99.
+* gheap.hpp - switch file, which includes either gheap_cpp03.hpp
+  or gheap_cpp11.hpp depending on whether GHEAP_CPP11 macro is defined.
+* gheap.h - gheap optimized for C99.
 
 Don't forget passing -DNDEBUG option to the compiler when creating optimized
 builds. This significantly speeds up gheap code by removing debug assertions.
 
-Also pass -ftracer option to gcc when building a file with gheap_c.h included.
+Also pass -ftracer option to gcc when building a file with gheap.h included.
 This significantly improves gheap performance.
 
 ===============================================================================
 gheap for C++ usage
 
-#include "gheap_cpp11.hpp"
+#include "gheap.hpp"
 
 ...
 
@@ -101,7 +103,7 @@ heapsort<paged_binary_heap>(a);
 ===============================================================================
 gheap for C usage
 
-#include "gheap_c.h"
+#include "gheap.h"
 
 static void less(const void *const a, const void *const b)
 {

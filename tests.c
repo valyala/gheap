@@ -1,6 +1,6 @@
-/* Tests for gheap_c. */
+/* Tests for C99 gheap */
 
-#include "gheap_c.h"
+#include "gheap.h"
 
 #include <assert.h>
 #include <stdio.h>     /* for printf() */

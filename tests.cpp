@@ -1,13 +1,9 @@
-// Tests for gheap_cpp*.
+// Tests for C++03 and C++11 gheap.
 //
 // Pass -DGHEAP_CPP11 to compiler for gheap_cpp11.hpp tests,
 // otherwise gheap_cpp03.hpp will be tested.
 
-#ifdef GHEAP_CPP11
-#  include "gheap_cpp11.hpp"
-#else
-#  include "gheap_cpp03.hpp"
-#endif
+#include "gheap.hpp"
 
 #include <cassert>
 #include <cstdlib>    // for srand(), rand()
