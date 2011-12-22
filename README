@@ -5,6 +5,7 @@ http://en.wikipedia.org/wiki/Heap_%28data_structure%29 .
 
 It provides two additional paremeters, which allow optimizing heap
 for particular cases:
+
 * Fanout. The number of children per each heap node.
   * Fanout=1 corresponds to usual List data structure.
     See http://en.wikipedia.org/wiki/List_%28computing%29 .
@@ -13,8 +14,13 @@ for particular cases:
   * Fanout>2 corresponds to D-heap. See http://en.wikipedia.org/wiki/D-heap .
     D-heap can be faster than Binary heap in the following cases:
     * If item comparison is faster than item assignment.
-    * If sequental access to D items is faster than 'random' access
-      to log2(Fanout)*2 items.
+    * If sequential access to items is faster than non-sequential access
+      to items.
+    * If the number of 'decrease key' operations is larger than the number
+      of 'pop heap' operations for min-heap. This is usually the case
+      for Dijkstra algorihm
+      ( http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm ).
+
 * PageChunks. The number of chunks per each heap page. Each chunk contains
   Fanout children, so each heap page contains (PageChunks * Fanout) items.
   Items inside heap page are organized in a sub-heap with a root item outside
