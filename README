@@ -71,6 +71,9 @@ There are the following file:
 Don't forget passing -DNDEBUG option to the compiler when creating optimized
 builds. This significantly speeds up gheap code by removing debug assertions.
 
+Also pass -ftracer option to gcc when building a file with gheap_c.h included.
+This significantly improves gheap performance.
+
 ===============================================================================
 gheap for C++ usage
 
