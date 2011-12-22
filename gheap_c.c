@@ -21,7 +21,8 @@
 #include <string.h>     /* for memcpy() */
 
 
-/* These arguments are too common in the implementation below, so hide them
+/*
+ * These arguments are too common in the implementation below, so hide them
  * behind the macro.
  */
 #define _common_args \
@@ -330,20 +331,20 @@ void gheap_restore_heap_after_item_increase(
     const size_t fanout, const size_t page_chunks,
     const size_t item_size, const gheap_less_comparer_t less_comparer,
     void *const base, const size_t heap_size, size_t modified_item_index)
-  {
-    assert(heap_size > 0);
-    assert(modified_item_index < heap_size);
+{
+  assert(heap_size > 0);
+  assert(modified_item_index < heap_size);
 
-    if (modified_item_index > 0) {
-      char tmp[item_size];
-      _copy_item(item_size, tmp, _get_item_ptr(item_size, base,
-          modified_item_index));
-      _sift_up(_common_args, base, 0, modified_item_index, tmp);
-    }
-
-    assert(gheap_is_heap(_common_args, base, heap_size));
-    (void)heap_size;
+  if (modified_item_index > 0) {
+    char tmp[item_size];
+    _copy_item(item_size, tmp, _get_item_ptr(item_size, base,
+        modified_item_index));
+    _sift_up(_common_args, base, 0, modified_item_index, tmp);
   }
+
+  assert(gheap_is_heap(_common_args, base, heap_size));
+  (void)heap_size;
+}
 
 void gheap_restore_heap_after_item_decrease(
     const size_t fanout, const size_t page_chunks,
