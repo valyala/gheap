@@ -1,15 +1,22 @@
-// Tests for C++03 and C++11 gheap.
+// Tests for C++03 and C++11 gheap and gpriority_queue.
 //
 // Pass -DGHEAP_CPP11 to compiler for gheap_cpp11.hpp tests,
 // otherwise gheap_cpp03.hpp will be tested.
 
 #include "gheap.hpp"
+#include "gpriority_queue.hpp"
 
 #include <cassert>
 #include <cstdlib>    // for srand(), rand()
 #include <deque>
 #include <iostream>   // for cout
 #include <vector>
+
+#ifdef GHEAP_CPP11
+#  include <utility>    // for swap()
+#else
+#  include <algorithm>  // for swap()
+#endif
 
 using namespace std;
 
@@ -275,6 +282,71 @@ void test_remove_from_heap(const size_t n)
   cout << "OK" << endl;
 }
 
+template <size_t Fanout, size_t PageChunks, class IntContainer>
+void test_priority_queue(const size_t n)
+{
+  typedef typename IntContainer::value_type value_type;
+  typedef gpriority_queue<Fanout, PageChunks, value_type, IntContainer>
+      priority_queue;
+
+  cout << "    test_priority_queue(n=" << n << ") ";
+
+  // Verify default constructor.
+  priority_queue q_empty;
+  assert(q_empty.empty());
+  assert(q_empty.size() == 0);
+
+  // Verify non-empty priority queue.
+  IntContainer a;
+  init_array(&a, n);
+  priority_queue q(a.begin(), a.end());
+  assert(!q.empty());
+  assert(q.size() == n);
+
+  // Verify swap().
+  q.swap(q_empty);
+  assert(q.empty());
+  assert(!q_empty.empty());
+  assert(q_empty.size() == n);
+  swap(q, q_empty);
+  assert(!q.empty());
+  assert(q.size() == n);
+  assert(q_empty.empty());
+
+  // Pop all items from the priority queue.
+  int max_item = q.top();
+  for (size_t i = 1; i < n; ++i) {
+    q.pop();
+    assert(q.size() == n - i);
+    assert(q.top() <= max_item);
+    max_item = q.top();
+  }
+  assert(q.top() <= max_item);
+  q.pop();
+  assert(q.empty());
+
+  // Push items to priority queue.
+  for (size_t i = 0; i < n; ++i) {
+    q.push(rand());
+    assert(q.size() == i + 1);
+  }
+
+  // Interleave pushing and popping items in priority queue.
+  max_item = q.top();
+  for (size_t i = 1; i < n; ++i) {
+    q.pop();
+    assert(q.top() <= max_item);
+    const int tmp = rand();
+    if (tmp > max_item) {
+      max_item = tmp;
+    }
+    q.push(tmp);
+  }
+  assert(q.size() == n);
+
+  cout << "OK" << endl;
+}
+
 template <class Func>
 void test_func(const Func &func)
 {
@@ -305,6 +377,7 @@ void test_all()
   test_func(test_restore_heap_after_item_decrease<Fanout, PageChunks,
       IntContainer>);
   test_func(test_remove_from_heap<Fanout, PageChunks, IntContainer>);
+  test_func(test_priority_queue<Fanout, PageChunks, IntContainer>);
 
   cout << "  test_all(Fanout=" << Fanout << ", PageChunks=" << PageChunks <<
       ") OK" << endl;
