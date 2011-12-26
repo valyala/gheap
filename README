@@ -70,6 +70,7 @@ There are the following files:
   or gheap_cpp11.hpp depending on whether GHEAP_CPP11 macro is defined.
 * gheap.h - gheap optimized for C99.
 * gpriority_queue.hpp - priority queue on top of gheap for C++.
+* gpriority_queue.h - priority queue on top of gheap for C.
 
 Don't forget passing -DNDEBUG option to the compiler when creating optimized
 builds. This significantly speeds up gheap code by removing debug assertions.

@@ -1,6 +1,7 @@
 /* Tests for C99 gheap */
 
 #include "gheap.h"
+#include "gpriority_queue.h"
 
 #include <assert.h>
 #include <stdio.h>     /* for printf() */
@@ -16,65 +17,12 @@ static int less_comparer_desc(const void *const a, const void *const b)
   return *((int *)b) < *((int *)a);
 }
 
+static void item_mover(void *const dst, const void *const src)
+{
+  *((int *)dst) = *((int *)src);
+}
 
-/* Helper macros, which hide fanout, page_chunks, item_size and less_comparer
- * parameters.
- */
-
-#define get_parent_index(u) \
-  gheap_get_parent_index(fanout, page_chunks, u)
-
-#define get_child_index(u) \
-  gheap_get_child_index(fanout, page_chunks, u)
-
-#define _common_args(a) \
-  fanout, page_chunks, sizeof(*(a))
-
-#define _call_func_asc(func, a, n) \
-  func(_common_args(a), less_comparer_asc, a, n)
-
-#define _call_func_desc(func, a, n) \
-  func(_common_args(a), less_comparer_desc, a, n)
-
-#define is_heap_until(a, n) \
-  _call_func_asc(gheap_is_heap_until, a, n)
-
-#define is_heap(a, n) \
-  _call_func_asc(gheap_is_heap, a, n)
-
-#define is_heap_desc(a, n) \
-  _call_func_desc(gheap_is_heap, a, n)
-
-#define make_heap(a, n) \
-  _call_func_asc(gheap_make_heap, a, n)
-
-#define make_heap_desc(a, n) \
-  _call_func_desc(gheap_make_heap, a, n)
-
-#define sort_heap(a, n) \
-  _call_func_asc(gheap_sort_heap, a, n)
-
-#define sort_heap_desc(a, n) \
-  _call_func_desc(gheap_sort_heap, a, n)
-
-#define push_heap(a, n) \
-  _call_func_asc(gheap_push_heap, a, n)
-
-#define pop_heap(a, n) \
-  _call_func_asc(gheap_pop_heap, a, n)
-
-#define restore_heap_after_item_increase(a, n, u) \
-  gheap_restore_heap_after_item_increase(_common_args(a), \
-      less_comparer_asc, a, n, u)
-
-#define restore_heap_after_item_decrease(a, n, u) \
-  gheap_restore_heap_after_item_decrease(_common_args(a), \
-      less_comparer_asc, a, n, u)
-
-#define remove_from_heap(a, n, u) \
-  gheap_remove_from_heap(_common_args(a), less_comparer_asc, a, n, u)
-
-static void test_parent_child(const size_t fanout, const size_t page_chunks,
+static void test_parent_child(const struct gheap_ctx *const ctx,
     const size_t start_index, const size_t n)
 {
   assert(start_index > 0);
@@ -82,25 +30,27 @@ static void test_parent_child(const size_t fanout, const size_t page_chunks,
 
   printf("    test_parent_child(start_index=%zu, n=%zu) ", start_index, n);
 
+  const size_t fanout = ctx->fanout;
+
   for (size_t i = 0; i < n; ++i) {
     const size_t u = start_index + i;
-    size_t v = get_child_index(u);
+    size_t v = gheap_get_child_index(ctx, u);
     if (v < SIZE_MAX) {
       assert(v > u);
-      v = get_parent_index(v);
+      v = gheap_get_parent_index(ctx, v);
       assert(v == u);
     }
 
-    v = get_parent_index(u);
+    v = gheap_get_parent_index(ctx, u);
     assert(v < u);
-    v = get_child_index(v);
+    v = gheap_get_child_index(ctx, v);
     assert(v <= u && u - v < fanout);
   }
 
   printf("OK\n");
 }
 
-static void test_is_heap(const size_t fanout, const size_t page_chunks,
+static void test_is_heap(const struct gheap_ctx *const ctx,
     const size_t n, int *const a)
 {
   assert(n > 0);
@@ -111,25 +61,25 @@ static void test_is_heap(const size_t fanout, const size_t page_chunks,
   for (size_t i = 0; i < n; ++i) {
     a[i] = i;
   }
-  assert(is_heap_until(a, n) == 1);
-  assert(is_heap(a, 1));
+  assert(gheap_is_heap_until(ctx, a, n) == 1);
+  assert(gheap_is_heap(ctx, a, 1));
   if (n > 1) {
-    assert(!is_heap(a, n));
+    assert(!gheap_is_heap(ctx, a, n));
   }
 
   /* Verify that descending sorted array creates valid heap. */
   for (size_t i = 0; i < n; ++i) {
     a[i] = n - i;
   }
-  assert(is_heap_until(a, n) == n);
-  assert(is_heap(a, n));
+  assert(gheap_is_heap_until(ctx, a, n) == n);
+  assert(gheap_is_heap(ctx, a, n));
 
   /* Verify that array containing identical items creates valid heap. */
   for (size_t i = 0; i < n; ++i) {
     a[i] = n;
   }
-  assert(is_heap_until(a, n) == n);
-  assert(is_heap(a, n));
+  assert(gheap_is_heap_until(ctx, a, n) == n);
+  assert(gheap_is_heap(ctx, a, n));
 
   printf("OK\n");
 }
@@ -156,29 +106,38 @@ static void assert_sorted_desc(const int *const base, const size_t n)
   }
 }
 
-static void test_heapsort(const size_t fanout, const size_t page_chunks,
+static void test_heapsort(const struct gheap_ctx *const ctx,
     const size_t n, int *const a)
 {
   printf("    test_heapsort(n=%zu) ", n);
 
   /* Verify ascending sorting. */
   init_array(a, n);
-  make_heap(a, n);
-  assert(is_heap(a, n));
-  sort_heap(a, n);
+  gheap_make_heap(ctx, a, n);
+  assert(gheap_is_heap(ctx, a, n));
+  gheap_sort_heap(ctx, a, n);
   assert_sorted_asc(a, n);
 
   /* Verify descending sorting. */
+  const struct gheap_ctx ctx_desc_v = {
+    .fanout = ctx->fanout,
+    .page_chunks = ctx->page_chunks,
+    .item_size = ctx->item_size,
+    .less_comparer = &less_comparer_desc,
+    .item_mover = ctx->item_mover,
+  };
+  const struct gheap_ctx *const ctx_desc = &ctx_desc_v;
+
   init_array(a, n);
-  make_heap_desc(a, n);
-  assert(is_heap_desc(a, n));
-  sort_heap_desc(a, n);
+  gheap_make_heap(ctx_desc, a, n);
+  assert(gheap_is_heap(ctx_desc, a, n));
+  gheap_sort_heap(ctx_desc, a, n);
   assert_sorted_desc(a, n);
 
   printf("OK\n");
 }
 
-static void test_push_heap(const size_t fanout, const size_t page_chunks,
+static void test_push_heap(const struct gheap_ctx *const ctx,
     const size_t n, int *const a)
 {
   printf("    test_push_heap(n=%zu) ", n);
@@ -186,25 +145,25 @@ static void test_push_heap(const size_t fanout, const size_t page_chunks,
   init_array(a, n);
 
   for (size_t i = 0; i < n; ++i) {
-    push_heap(a, i + 1);
+    gheap_push_heap(ctx, a, i + 1);
   }
-  assert(is_heap(a, n));
+  assert(gheap_is_heap(ctx, a, n));
 
   printf("OK\n");
 }
 
-static void test_pop_heap(const size_t fanout, const size_t page_chunks,
+static void test_pop_heap(const struct gheap_ctx *const ctx,
     const size_t n, int *const a)
 {
   printf("    test_pop_heap(n=%zu) ", n);
 
   init_array(a, n);
 
-  make_heap(a, n);
-  assert(is_heap(a, n));
+  gheap_make_heap(ctx, a, n);
+  assert(gheap_is_heap(ctx, a, n));
   for (size_t i = 0; i < n; ++i) {
     const int item = a[0];
-    pop_heap(a, n - i);
+    gheap_pop_heap(ctx, a, n - i);
     assert(item == a[n - i - 1]);
   }
   assert_sorted_asc(a, n);
@@ -212,15 +171,16 @@ static void test_pop_heap(const size_t fanout, const size_t page_chunks,
   printf("OK\n");
 }
 
-static void test_restore_heap_after_item_increase(const size_t fanout,
-    const size_t page_chunks, const size_t n, int *const a)
+static void test_restore_heap_after_item_increase(
+    const struct gheap_ctx *const ctx,
+    const size_t n, int *const a)
 {
   printf("    test_restore_heap_after_item_increase(n=%zu) ", n);
 
   init_array(a, n);
 
-  make_heap(a, n);
-  assert(is_heap(a, n));
+  gheap_make_heap(ctx, a, n);
+  assert(gheap_is_heap(ctx, a, n));
   for (size_t i = 0; i < n; ++i) {
     const size_t item_index = rand() % n;
     const int old_item = a[item_index];
@@ -232,22 +192,23 @@ static void test_restore_heap_after_item_increase(const size_t fanout,
       a[item_index] = old_item + rand() % fade;
       fade /= 2;
     } while (a[item_index] < old_item);
-    restore_heap_after_item_increase(a, n, item_index);
-    assert(is_heap(a, n));
+    gheap_restore_heap_after_item_increase(ctx, a, n, item_index);
+    assert(gheap_is_heap(ctx, a, n));
   }
 
   printf("OK\n");
 }
 
-static void test_restore_heap_after_item_decrease(const size_t fanout,
-    const size_t page_chunks, const size_t n, int *const a)
+static void test_restore_heap_after_item_decrease(
+    const struct gheap_ctx *const ctx,
+    const size_t n, int *const a)
 {
   printf("    test_resotre_heap_after_item_decrease(n=%zu) ", n);
 
   init_array(a, n);
 
-  make_heap(a, n);
-  assert(is_heap(a, n));
+  gheap_make_heap(ctx, a, n);
+  assert(gheap_is_heap(ctx, a, n));
   for (size_t i = 0; i < n; ++i) {
     const size_t item_index = rand() % n;
     const int old_item = a[item_index];
@@ -259,68 +220,134 @@ static void test_restore_heap_after_item_decrease(const size_t fanout,
       a[item_index] = old_item - rand() % fade;
       fade /= 2;
     } while (a[item_index] > old_item);
-    restore_heap_after_item_decrease(a, n, item_index);
-    assert(is_heap(a, n));
+    gheap_restore_heap_after_item_decrease(ctx, a, n, item_index);
+    assert(gheap_is_heap(ctx, a, n));
   }
 
   printf("OK\n");
 }
 
-static void test_remove_from_heap(const size_t fanout, const size_t page_chunks,
+static void test_remove_from_heap(const struct gheap_ctx *const ctx,
     const size_t n, int *const a)
 {
   printf("    test_remove_from_heap(n=%zu) ", n);
 
   init_array(a, n);
 
-  make_heap(a, n);
-  assert(is_heap(a, n));
+  gheap_make_heap(ctx, a, n);
+  assert(gheap_is_heap(ctx, a, n));
   for (size_t i = 0; i < n; ++i) {
     const size_t item_index = rand() % (n - i);
     const int item = a[item_index];
-    remove_from_heap(a, n - i, item_index);
-    assert(is_heap(a, n - i - 1));
+    gheap_remove_from_heap(ctx, a, n - i, item_index);
+    assert(gheap_is_heap(ctx, a, n - i - 1));
     assert(item == a[n - i - 1]);
   }
 
   printf("OK\n");
 }
 
-static void run_all(const size_t fanout, const size_t page_chunks,
-    void (*func)(size_t, size_t, size_t, int *))
+static void item_deleter(void *item)
+{
+  /* do nothing */
+  (void)item;
+}
+
+static void test_priority_queue(const struct gheap_ctx *const ctx,
+    const size_t n, int *const a)
+{
+  printf("    test_priority_queue(n=%zu) ", n);
+
+  // Verify emptry priority queue.
+  struct gpriority_queue *const q_empty = gpriority_queue_create(ctx,
+      &item_deleter);
+  assert(gpriority_queue_empty(q_empty));
+  assert(gpriority_queue_size(q_empty) == 0);
+
+  // Verify non-empty priority queue.
+  init_array(a, n);
+  struct gpriority_queue *const q = gpriority_queue_create_from_array(ctx,
+      &item_deleter, a, n);
+  assert(!gpriority_queue_empty(q));
+  assert(gpriority_queue_size(q) == n);
+
+  // Pop all items from the priority queue.
+  int max_item = *(int *)gpriority_queue_top(q);
+  for (size_t i = 1; i < n; ++i) {
+    gpriority_queue_pop(q);
+    assert(gpriority_queue_size(q) == n - i);
+    assert(*(int *)gpriority_queue_top(q) <= max_item);
+    max_item = *(int *)gpriority_queue_top(q);
+  }
+  assert(*(int *)gpriority_queue_top(q) <= max_item);
+  gpriority_queue_pop(q);
+  assert(gpriority_queue_empty(q));
+
+  // Push items to priority queue.
+  for (size_t i = 0; i < n; ++i) {
+    const int tmp = rand();
+    gpriority_queue_push(q, &tmp);
+    assert(gpriority_queue_size(q) == i + 1);
+  }
+
+  // Interleave pushing and popping items in priority queue.
+  max_item = *(int *)gpriority_queue_top(q);
+  for (size_t i = 1; i < n; ++i) {
+    gpriority_queue_pop(q);
+    assert(*(int*)gpriority_queue_top(q) <= max_item);
+    const int tmp = rand();
+    if (tmp > max_item) {
+      max_item = tmp;
+    }
+    gpriority_queue_push(q, &tmp);
+  }
+  assert(gpriority_queue_size(q) == n);
+
+  printf("OK\n");
+}
+
+static void run_all(const struct gheap_ctx *const ctx,
+    void (*func)(const struct gheap_ctx *, size_t, int *))
 {
   int *const a = malloc(1001 * sizeof(*a));
 
-  func(fanout, page_chunks, 1, a);
-  func(fanout, page_chunks, 2, a);
-  func(fanout, page_chunks, 3, a);
-  func(fanout, page_chunks, 1001, a);
+  func(ctx, 1, a);
+  func(ctx, 2, a);
+  func(ctx, 3, a);
+  func(ctx, 1001, a);
 
   free(a);
 }
-
-#define run(func) \
-  run_all(fanout, page_chunks, func)
 
 static void test_all(const size_t fanout, const size_t page_chunks)
 {
   printf("  test_all(fanout=%zu, page_chunks=%zu) start\n",
       fanout, page_chunks);
 
+  const struct gheap_ctx ctx_v = {
+      .fanout = fanout,
+      .page_chunks = page_chunks,
+      .item_size = sizeof(int),
+      .less_comparer = &less_comparer_asc,
+      .item_mover = &item_mover,
+  };
+  const struct gheap_ctx *const ctx = &ctx_v;
+
   /* Verify parent-child calculations for indexes close to zero and
    * indexes close to SIZE_MAX.
    */
   static const size_t n = 1000000;
-  test_parent_child(fanout, page_chunks, 1, n);
-  test_parent_child(fanout, page_chunks, SIZE_MAX - n, n);
+  test_parent_child(ctx, 1, n);
+  test_parent_child(ctx, SIZE_MAX - n, n);
 
-  run(test_is_heap);
-  run(test_heapsort);
-  run(test_push_heap);
-  run(test_pop_heap);
-  run(test_restore_heap_after_item_increase);
-  run(test_restore_heap_after_item_decrease);
-  run(test_remove_from_heap);
+  run_all(ctx, test_is_heap);
+  run_all(ctx, test_heapsort);
+  run_all(ctx, test_push_heap);
+  run_all(ctx, test_pop_heap);
+  run_all(ctx, test_restore_heap_after_item_increase);
+  run_all(ctx, test_restore_heap_after_item_decrease);
+  run_all(ctx, test_remove_from_heap);
+  run_all(ctx, test_priority_queue);
 
   printf("  test_all(fanout=%zu, page_chunks=%zu) OK\n", fanout, page_chunks);
 }
