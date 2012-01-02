@@ -350,9 +350,9 @@ void test_priority_queue(const size_t n)
 template <class Func>
 void test_func(const Func &func)
 {
-  func(1);
-  func(2);
-  func(3);
+  for (size_t i = 1; i < 12; ++i) {
+    func(i);
+  }
   func(1001);
 }
 
