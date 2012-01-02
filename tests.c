@@ -203,7 +203,7 @@ static void test_restore_heap_after_item_decrease(
     const struct gheap_ctx *const ctx,
     const size_t n, int *const a)
 {
-  printf("    test_resotre_heap_after_item_decrease(n=%zu) ", n);
+  printf("    test_restore_heap_after_item_decrease(n=%zu) ", n);
 
   init_array(a, n);
 
