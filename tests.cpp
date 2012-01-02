@@ -233,7 +233,7 @@ void test_restore_heap_after_item_decrease(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
 
-  cout << "    test_resotre_heap_after_item_decrease(n=" << n << ") ";
+  cout << "    test_restore_heap_after_item_decrease(n=" << n << ") ";
 
   IntContainer a;
   init_array(&a, n);
