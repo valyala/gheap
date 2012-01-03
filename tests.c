@@ -86,7 +86,6 @@ static void test_is_heap(const struct gheap_ctx *const ctx,
 
 static void init_array(int *const a, const size_t n)
 {
-  srand(0);
   for (size_t i = 0; i < n; ++i) {
     a[i] = rand();
   }
@@ -391,6 +390,7 @@ static void main_test(void)
 
 int main(void)
 {
+  srand(0);
   main_test();
   return 0;
 }

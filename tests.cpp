@@ -97,7 +97,6 @@ void init_array(IntContainer *const a, const size_t n)
 {
   a->clear();
 
-  srand(0);
   for (size_t i = 0; i < n; ++i) {
     a->push_back(rand());
   }
@@ -425,6 +424,7 @@ void main_test(const char *const container_name)
 
 int main()
 {
+  srand(0);
   main_test<vector<int> >("vector");
   main_test<deque<int> >("deque");
 }
