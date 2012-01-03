@@ -18,38 +18,14 @@
 #  include <algorithm>  // for swap()
 #endif
 
+// C++03 has no SIZE_MAX, so define it here.
+#ifndef SIZE_MAX
+#  define SIZE_MAX     (~(size_t)0)
+#endif
+
 using namespace std;
 
 namespace {
-
-template <size_t Fanout, size_t PageChunks>
-void test_parent_child(const size_t start_index, const size_t n)
-{
-  assert(start_index > 0);
-  assert(start_index <= SIZE_MAX - n);
-
-  typedef gheap<Fanout, PageChunks> heap;
-
-  cout << "    test_parent_child(start_index=" << start_index << ", n=" << n <<
-      ") ";
-
-  for (size_t i = 0; i < n; ++i) {
-    const size_t u = start_index + i;
-    size_t v = heap::get_child_index(u);
-    if (v < SIZE_MAX) {
-      assert(v > u);
-      v = heap::get_parent_index(v);
-      assert(v == u);
-    }
-
-    v = heap::get_parent_index(u);
-    assert(v < u);
-    v = heap::get_child_index(v);
-    assert(v <= u && u - v < Fanout);
-  }
-
-  cout << "OK" << endl;
-}
 
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_is_heap(const size_t n)
@@ -360,12 +336,6 @@ void test_all()
 {
   cout << "  test_all(Fanout=" << Fanout << ", PageChunks=" << PageChunks <<
       ") start" << endl;
-
-  // Verify parent-child calculations for indexes close to zero and
-  // indexes close to SIZE_MAX.
-  static const size_t n = 1000000;
-  test_parent_child<Fanout, PageChunks>(1, n);
-  test_parent_child<Fanout, PageChunks>(SIZE_MAX - n, n);
 
   test_func(test_is_heap<Fanout, PageChunks, IntContainer>);
   test_func(test_heapsort<Fanout, PageChunks, IntContainer>);

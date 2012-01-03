@@ -4,6 +4,7 @@
 #include "gpriority_queue.h"
 
 #include <assert.h>
+#include <stdint.h>    /* for SIZE_MAX */
 #include <stdio.h>     /* for printf() */
 #include <stdlib.h>    /* for srand(), rand(), malloc(), free() */
 
@@ -20,34 +21,6 @@ static int less_comparer_desc(const void *const a, const void *const b)
 static void item_mover(void *const dst, const void *const src)
 {
   *((int *)dst) = *((int *)src);
-}
-
-static void test_parent_child(const struct gheap_ctx *const ctx,
-    const size_t start_index, const size_t n)
-{
-  assert(start_index > 0);
-  assert(start_index <= SIZE_MAX - n);
-
-  printf("    test_parent_child(start_index=%zu, n=%zu) ", start_index, n);
-
-  const size_t fanout = ctx->fanout;
-
-  for (size_t i = 0; i < n; ++i) {
-    const size_t u = start_index + i;
-    size_t v = gheap_get_child_index(ctx, u);
-    if (v < SIZE_MAX) {
-      assert(v > u);
-      v = gheap_get_parent_index(ctx, v);
-      assert(v == u);
-    }
-
-    v = gheap_get_parent_index(ctx, u);
-    assert(v < u);
-    v = gheap_get_child_index(ctx, v);
-    assert(v <= u && u - v < fanout);
-  }
-
-  printf("OK\n");
 }
 
 static void test_is_heap(const struct gheap_ctx *const ctx,
@@ -331,13 +304,6 @@ static void test_all(const size_t fanout, const size_t page_chunks)
       .item_mover = &item_mover,
   };
   const struct gheap_ctx *const ctx = &ctx_v;
-
-  /* Verify parent-child calculations for indexes close to zero and
-   * indexes close to SIZE_MAX.
-   */
-  static const size_t n = 1000000;
-  test_parent_child(ctx, 1, n);
-  test_parent_child(ctx, SIZE_MAX - n, n);
 
   run_all(ctx, test_is_heap);
   run_all(ctx, test_heapsort);

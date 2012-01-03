@@ -24,7 +24,7 @@ for particular cases:
 * PageChunks. The number of chunks per each heap page. Each chunk contains
   Fanout children, so each heap page contains (PageChunks * Fanout) items.
   Items inside heap page are organized in a sub-heap with a root item outside
-  the page. Leaf items in the page can be roots pointing to another pages.
+  the page. Items in the page can be roots pointing to another pages.
   * PageChunks=1 corresponds to standard heap.
   * PageChunks>1 corresponds to B-heap. See http://en.wikipedia.org/wiki/B-heap.
     Heap pages containing more than one page chunk can be useful if multiple
@@ -43,8 +43,6 @@ for particular cases:
 ===============================================================================
 The implementation provides the following functions:
 * Auxiliary functions:
-  * get_parent_index() - returns parent index for the given child.
-  * get_child_index() - returns the first child index for the given parent.
   * restore_heap_after_item_increase() - restores max heap invariant after
     the item's value increase.
   * restore_heap_after_item_decrease() - restores max heap invariant after

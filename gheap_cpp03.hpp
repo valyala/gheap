@@ -22,107 +22,16 @@
 #include <cstddef>     // for size_t
 #include <iterator>    // for std::iterator_traits
 
-// C++03 has no SIZE_MAX, so define it here.
-#ifndef SIZE_MAX
-#  define SIZE_MAX     (~(size_t)0)
-#endif
-
 template <size_t Fanout, size_t PageChunks = 1>
 class gheap
 {
 public:
 
-  // Returns parent index for the given child index.
-  // Child index must be greater than 0.
-  // Returns 0 if the parent is root.
-  static size_t get_parent_index(size_t u)
-  {
-    assert(u > 0);
-
-    --u;
-    if (PageChunks == 1) {
-      return u / Fanout;
-    }
-
-    if (u < Fanout) {
-      // Parent is root.
-      return 0;
-    }
-
-    assert(PageChunks <= SIZE_MAX / Fanout);
-    const size_t page_size = Fanout * PageChunks;
-    size_t v = u % page_size;
-    if (v >= Fanout) {
-      // Fast path. Parent is on the same page as the child.
-      return u - v + v / Fanout;
-    }
-
-    // Slow path. Parent is on another page.
-    v = u / page_size - 1;
-    const size_t page_leaves = (Fanout - 1) * PageChunks + 1;
-    u = v / page_leaves + 1;
-    return u * page_size + v % page_leaves - page_leaves + 1;
-  }
-
-  // Returns the index of the first child for the given parent index.
-  // Parent index must be less than SIZE_MAX.
-  // Returns SIZE_MAX if the index of the first child for the given parent
-  // cannot fit size_t.
-  static size_t get_child_index(size_t u)
-  {
-    assert(u < SIZE_MAX);
-
-    if (PageChunks == 1) {
-      if (u > (SIZE_MAX - 1) / Fanout) {
-        // Child overflow.
-        return SIZE_MAX;
-      }
-      return u * Fanout + 1;
-    }
-
-    if (u == 0) {
-      // Root's child is always 1.
-      return 1;
-    }
-
-    assert(PageChunks <= SIZE_MAX / Fanout);
-    const size_t page_size = Fanout * PageChunks;
-    --u;
-    size_t v = u % page_size + 1;
-    if (v < page_size / Fanout) {
-      // Fast path. Child is on the same page as the parent.
-      v *= Fanout - 1;
-      if (u > SIZE_MAX - 2 - v) {
-        // Child overflow.
-        return SIZE_MAX;
-      }
-      return u + v + 2;
-    }
-
-    // Slow path. Child is on another page.
-    const size_t page_leaves = (Fanout - 1) * PageChunks + 1;
-    v += (u / page_size + 1) * page_leaves - page_size;
-    if (v > (SIZE_MAX - 1) / page_size) {
-      // Child overflow.
-      return SIZE_MAX;
-    }
-    return v * page_size + 1;
-  }
+  static const size_t FANOUT = Fanout;
+  static const size_t PAGE_CHUNKS = PageChunks;
+  static const size_t PAGE_SIZE = Fanout * PageChunks;
 
 private:
-
-  template <class T>
-  static void _swap(const T &a, const T &b)
-  {
-    // a and b are const for optimization purposes only. This hints compiler
-    // that values referenced by a and b cannot be modified by somebody else,
-    // so it is safe reading these values from CPU registers instead of reading
-    // them from slow memory on each read access.
-    //
-    // Of course, this optimization works only if values are small enough
-    // to fit CPU registers.
-    std::swap(const_cast<T &>(a), const_cast<T &>(b));
-  }
 
   // Sifts the item up in the given sub-heap with the given root_index
   // starting from the item_index.
@@ -133,45 +42,153 @@ private:
   {
     assert(item_index >= root_index);
 
-    typedef typename std::iterator_traits<RandomAccessIterator>::value_type
-        value_type;
+    const size_t min_item_index = root_index * PAGE_SIZE;
 
-    while (item_index > root_index) {
-      const size_t parent_index = get_parent_index(item_index);
-      assert(parent_index >= root_index);
-      const value_type &item = first[item_index];
-      const value_type &parent = first[parent_index];
-      if (!less_comparer(parent, item)) {
-        break;
+    // Sift the item up through pages without item with root_index index.
+    while (item_index > min_item_index) {
+      const size_t parent_index = (item_index - 1) / PAGE_SIZE;
+
+      // Sift the item up through the current page.
+      if (PAGE_CHUNKS > 1) {
+        const size_t base_index = parent_index * PAGE_SIZE + 1;
+        assert(root_index < base_index);
+        assert(base_index <= item_index);
+        assert(item_index - base_index < PAGE_SIZE);
+        size_t rel_item_index = item_index - base_index;
+
+        while (rel_item_index >= FANOUT) {
+          const size_t rel_parent_index = rel_item_index / FANOUT - 1;
+          assert(base_index + rel_parent_index > root_index);
+          if (!less_comparer(first[base_index + rel_parent_index],
+              first[item_index])) {
+            return;
+          }
+
+          std::swap(first[base_index + rel_item_index],
+              first[base_index + rel_parent_index]);
+          rel_item_index = rel_parent_index;
+          item_index = base_index + rel_item_index;
+        }
       }
-      _swap(item, parent);
+
+      // Sift the item up into the parent page.
+      assert(parent_index >= root_index);
+      if (!less_comparer(first[parent_index], first[item_index])) {
+        return;
+      }
+
+      std::swap(first[item_index], first[parent_index]);
       item_index = parent_index;
+    }
+
+    // Sift the item up though the page containing item with root_index index.
+    if (PAGE_CHUNKS > 1) {
+      if (item_index > root_index) {
+        const size_t base_index = item_index - (item_index - 1) % PAGE_SIZE;
+        assert(root_index >= base_index);
+        assert(item_index - base_index < PAGE_SIZE);
+        size_t rel_item_index = item_index - base_index;
+        const size_t rel_min_item_index = (root_index - base_index + 1) *
+            FANOUT;
+
+        while (rel_item_index >= rel_min_item_index) {
+          const size_t rel_parent_index = rel_item_index / FANOUT - 1;
+          assert(base_index + rel_parent_index >= root_index);
+          if (!less_comparer(first[base_index + rel_parent_index],
+              first[item_index])) {
+            return;
+          }
+
+          std::swap(first[base_index + rel_item_index],
+              first[base_index + rel_parent_index]);
+          rel_item_index = rel_parent_index;
+          item_index = base_index + rel_item_index;
+        }
+      }
     }
   }
 
-  // Swaps the max child with the item at item_index and returns index
-  // of the max child.
   template <class RandomAccessIterator, class LessComparer>
-  static size_t _move_up_max_child(const RandomAccessIterator &first,
-      const LessComparer &less_comparer, const size_t children_count,
-      const size_t item_index, const size_t child_index)
+  static size_t _get_max_child_index(
+      const RandomAccessIterator &first, const LessComparer &less_comparer,
+      const size_t first_child_index, const size_t children_count)
   {
-    assert(child_index == get_child_index(item_index));
+    assert(first_child_index > 0);
+    assert((first_child_index - 1) % FANOUT == 0);
+    assert(children_count > 0);
+    assert(children_count <= FANOUT);
 
-    typedef typename std::iterator_traits<RandomAccessIterator>::value_type
-        value_type;
-
-    const value_type *max_child = &first[child_index];
-    size_t j = 0;
+    size_t max_child_index = first_child_index;
     for (size_t i = 1; i < children_count; ++i) {
-      const value_type &tmp = first[child_index + i];
-      if (!less_comparer(tmp, *max_child)) {
-        j = i;
-        max_child = &tmp;
+      const size_t child_index = first_child_index + i;
+      if (!less_comparer(first[child_index], first[max_child_index])) {
+        max_child_index = child_index;
       }
     }
-    _swap(first[item_index], *max_child);
-    return child_index + j;
+
+    return max_child_index;
+  }
+
+  // The purpose of this function is to suppress -Wtype-limits warnings
+  // where appropriate.
+  static bool _is_child_fits_page(const size_t rel_item_index,
+      const size_t page_chunks)
+  {
+    assert(rel_item_index < PAGE_SIZE);
+
+    return (rel_item_index < page_chunks - 1);
+  }
+
+  template <class RandomAccessIterator, class LessComparer>
+  static size_t _get_max_rel_child_index(
+      const RandomAccessIterator &first, const LessComparer &less_comparer,
+      const size_t base_index, const size_t children_count,
+      size_t rel_item_index)
+  {
+    assert((base_index - 1) % PAGE_SIZE == 0);
+    assert(_is_child_fits_page(rel_item_index, PAGE_CHUNKS));
+
+    const size_t first_rel_child_index = (rel_item_index + 1) * FANOUT;
+    const size_t first_child_index = base_index + first_rel_child_index;
+
+    return _get_max_child_index(first, less_comparer, first_child_index,
+        children_count);
+  }
+
+  template <class RandomAccessIterator, class LessComparer>
+  static size_t _move_up_max_rel_child(
+      const RandomAccessIterator &first, const LessComparer &less_comparer,
+      const size_t base_index, const size_t children_count,
+      size_t rel_item_index)
+  {
+    size_t max_child_index = _get_max_rel_child_index(first, less_comparer,
+        base_index, children_count, rel_item_index);
+
+    std::swap(first[base_index + rel_item_index], first[max_child_index]);
+    return max_child_index - base_index;
+  }
+
+  template <class RandomAccessIterator, class LessComparer>
+  static size_t _get_max_child_index_in_current_page(
+      const RandomAccessIterator &first, const LessComparer &less_comparer,
+      const size_t item_index, const size_t max_child_index)
+  {
+    assert(item_index > 0);
+
+    const size_t base_index = item_index - (item_index - 1) % PAGE_SIZE;
+    assert(max_child_index >= base_index + PAGE_SIZE);
+    const size_t rel_item_index = item_index - base_index;
+
+    if (_is_child_fits_page(rel_item_index, PAGE_CHUNKS)) {
+      size_t max_child_index_tmp = _get_max_rel_child_index(first,
+          less_comparer, base_index, FANOUT, rel_item_index);
+      if (less_comparer(first[max_child_index],
+          first[max_child_index_tmp])) {
+        return max_child_index_tmp;
+      }
+    }
+
+    return max_child_index;
   }
 
   // Sifts the given item down in the heap of the given size starting
@@ -181,37 +198,142 @@ private:
       const LessComparer &less_comparer,
       const size_t heap_size, size_t item_index)
   {
-    assert(heap_size > 0);
+    assert(heap_size > 1);
     assert(item_index < heap_size);
 
     const size_t root_index = item_index;
-    const size_t remaining_items = (heap_size - 1) % Fanout;
-    while (true) {
-      const size_t child_index = get_child_index(item_index);
-      if (child_index >= heap_size - remaining_items) {
-        if (child_index < heap_size) {
-          assert(heap_size - child_index == remaining_items);
-          item_index = _move_up_max_child(first, less_comparer, remaining_items,
-              item_index, child_index);
+    size_t max_child_index;
+
+    // Sift down from root.
+    if (PAGE_CHUNKS > 1) {
+      if (item_index == 0) {
+        if (heap_size > FANOUT) {
+          max_child_index = _get_max_child_index(first, less_comparer, 1,
+              FANOUT);
         }
-        break;
+        else {
+          max_child_index = _get_max_child_index(first, less_comparer, 1,
+              heap_size - 1);
+        }
+
+        std::swap(first[item_index], first[max_child_index]);
+        item_index = max_child_index;
       }
-      assert(heap_size - child_index >= Fanout);
-      item_index = _move_up_max_child(first, less_comparer, Fanout,
-          item_index, child_index);
     }
+
+    // Sift down through full pages. Each full page contains PAGE_SIZE items.
+    const size_t full_pages_count = (heap_size - 1) / PAGE_SIZE;
+    while (item_index < full_pages_count) {
+
+      // Determine maximum child inside the full child page.
+      const size_t first_child_index = item_index * PAGE_SIZE + 1;
+      assert(first_child_index + FANOUT <= heap_size);
+      max_child_index = _get_max_child_index(first, less_comparer,
+          first_child_index, FANOUT);
+
+      // Determine maximum child inside the full current page.
+      if (PAGE_CHUNKS > 1) {
+        max_child_index = _get_max_child_index_in_current_page(first,
+            less_comparer, item_index, max_child_index);
+      }
+
+      std::swap(first[item_index], first[max_child_index]);
+      item_index = max_child_index;
+    }
+
+    // Sift down to the last page. The last page can contain less than
+    // PAGE_SIZE items.
+    if (item_index == full_pages_count) {
+      const size_t first_child_index = item_index * PAGE_SIZE + 1;
+      assert(first_child_index <= heap_size);
+      // Determine maximum child inside the last child page.
+      const size_t children_count = heap_size - first_child_index;
+
+      if (children_count > 0) {
+
+        if (PAGE_CHUNKS == 1) {
+          assert(children_count < FANOUT);
+          max_child_index = _get_max_child_index(first, less_comparer,
+              first_child_index, children_count);
+        }
+        else {
+          if (children_count < FANOUT) {
+            max_child_index = _get_max_child_index(first, less_comparer,
+                first_child_index, children_count);
+          }
+          else {
+            max_child_index = _get_max_child_index(first, less_comparer,
+                first_child_index, FANOUT);
+          }
+
+          // Determine maximum child inside the full current page.
+          max_child_index = _get_max_child_index_in_current_page(first,
+              less_comparer, item_index, max_child_index);
+        }
+
+        std::swap(first[item_index], first[max_child_index]);
+        item_index = max_child_index;
+      }
+    }
+
+    if (PAGE_CHUNKS > 1) {
+      // Sift down through the last page.
+      assert(item_index > 0);
+      const size_t base_index = item_index - (item_index - 1) % PAGE_SIZE;
+      size_t rel_item_index = item_index - base_index;
+      assert(rel_item_index < PAGE_SIZE);
+      const size_t rel_heap_size = heap_size - base_index;
+      if (rel_heap_size >= PAGE_SIZE) {
+
+       // Sift down through the full page.
+        while (_is_child_fits_page(rel_item_index, PAGE_CHUNKS)) {
+          rel_item_index = _move_up_max_rel_child(first, less_comparer,
+              base_index, FANOUT, rel_item_index);
+        }
+      }
+      else {
+
+        // Sift down through the last partial page.
+        assert(rel_heap_size < PAGE_SIZE);
+        if (rel_heap_size > FANOUT) {
+
+          // Sift down through full page chunks.
+          const size_t full_page_nodes = rel_heap_size / FANOUT - 1;
+          while (rel_item_index < full_page_nodes) {
+            rel_item_index = _move_up_max_rel_child(first, less_comparer,
+                base_index, FANOUT, rel_item_index);
+          }
+
+          // Sift down throgh the last page chunk. The last page chunk
+          // contains less than FANOUT items.
+          if (rel_item_index == full_page_nodes) {
+            const size_t rel_child_index = (rel_item_index + 1) * FANOUT;
+            if (rel_child_index < rel_heap_size) {
+              const size_t children_count = rel_heap_size - rel_child_index;
+              assert(children_count < FANOUT);
+              rel_item_index = _move_up_max_rel_child(first, less_comparer,
+                  base_index, children_count, rel_item_index);
+            }
+          }
+        }
+      }
+
+      item_index = base_index + rel_item_index;
+    }
+
     _sift_up(first, less_comparer, root_index, item_index);
   }
 
+
   // Pops the maximum item from the heap into first[heap_size-1].
   template <class RandomAccessIterator, class LessComparer>
-  static void _pop_heap(const RandomAccessIterator &first,
+  static void _pop_max_item(const RandomAccessIterator &first,
       const LessComparer &less_comparer, const size_t heap_size)
   {
-      assert(heap_size > 1);
+      assert(heap_size > 2);
 
       const size_t item_index = heap_size - 1;
-      _swap(first[item_index], first[0]);
+      std::swap(first[item_index], first[0]);
       _sift_down(first, less_comparer, item_index, 0);
   }
 
@@ -237,12 +359,104 @@ public:
     assert(last >= first);
 
     const size_t heap_size = last - first;
-    for (size_t u = 1; u < heap_size; ++u) {
-      const size_t v = get_parent_index(u);
-      if (less_comparer(first[v], first[u])) {
-        return first + u;
+
+    if (heap_size < 2) {
+      return last;
+    }
+
+    assert(heap_size > 1);
+    const size_t last_full_page_index = heap_size - (heap_size - 1) % PAGE_SIZE;
+
+    size_t child_index = 1;
+    size_t parent_index = 0;
+
+    // Check heap invariant for full pages. Each full page contains
+    // PAGE_SIZE items.
+    while (child_index < last_full_page_index) {
+
+      // Check inter-page heap invariant.
+      for (size_t i = 0; i < FANOUT; ++i) {
+        if (less_comparer(first[parent_index], first[child_index + i])) {
+          return first + (child_index + i);
+        }
+      }
+
+      // Check heap invariant inside the current page.
+      if (PAGE_CHUNKS > 1) {
+        size_t rel_child_index = FANOUT;
+        size_t rel_parent_index = 0;
+        while (rel_child_index < PAGE_SIZE) {
+          for (size_t i = 0; i < FANOUT; ++i) {
+            if (less_comparer(first[child_index + rel_parent_index],
+                first[child_index + rel_child_index + i])) {
+              return first + (child_index + rel_child_index + i);
+            }
+          }
+          rel_child_index += FANOUT;
+          ++rel_parent_index;
+        }
+      }
+
+      child_index += PAGE_SIZE;
+      ++parent_index;
+    }
+    assert(child_index == last_full_page_index);
+
+    // Check heap invariant for the last page, which contains less
+    // than PAGE_SIZE items.
+    const size_t rel_heap_size = heap_size - child_index;
+    assert(rel_heap_size < PAGE_SIZE);
+    if (rel_heap_size < FANOUT) {
+      // Check inter-page heap invariant for the last page containing
+      // rel_heap_size items. There is no need in checking heap invariant
+      // inside the last page, since it contains less than FANOUT items.
+      for (size_t i = 0; i < rel_heap_size; ++i) {
+        if (less_comparer(first[parent_index], first[child_index + i])) {
+          return first + (child_index + i);
+        }
+      }
+      return last;
+    }
+
+    // Check inter-page heap invariant for the last page.
+    assert(rel_heap_size >= FANOUT);
+    for (size_t i = 0; i < FANOUT; ++i) {
+      if (less_comparer(first[parent_index], first[child_index + i])) {
+        return first + (child_index + i);
       }
     }
+
+    // Check heap invariant inside the last page.
+    if (PAGE_CHUNKS > 1) {
+
+      // Check heap invariant for full page chunks. Each full page chunk
+      // contains FANOUT items.
+      const size_t last_aligned_rel_index = rel_heap_size -
+          rel_heap_size % FANOUT;
+      size_t rel_child_index = FANOUT;
+      size_t rel_parent_index = 0;
+      while (rel_child_index < last_aligned_rel_index) {
+        for (size_t i = 0; i < FANOUT; ++i) {
+          if (less_comparer(first[child_index + rel_parent_index],
+              first[child_index + rel_child_index + i])) {
+            return first + (child_index + rel_child_index + i);
+          }
+        }
+        rel_child_index += FANOUT;
+        ++rel_parent_index;
+      }
+
+      // Check heap invariant for the last page chunk. This page chunks contains
+      // less than FNAOUT items.
+      const size_t children_count = rel_heap_size - rel_child_index;
+      for (size_t i = 0; i < children_count; ++i) {
+        if (less_comparer(first[child_index + rel_parent_index],
+            first[child_index + rel_child_index + i])) {
+          return first + (child_index + rel_child_index + i);
+        }
+      }
+    }
+
     return last;
   }
 
@@ -287,9 +501,9 @@ public:
     const size_t heap_size = last - first;
     if (heap_size > 1) {
       // Skip leaf nodes without children. This is easy to do for non-paged
-      // heap, i.e. when page_chunks = 1, but it is difficult for paged heaps.
+      // heap, but it is difficult for paged heaps.
       // So leaf nodes in paged heaps are visited anyway.
-      size_t i = (PageChunks == 1) ? ((heap_size - 2) / Fanout) :
+      size_t i = (PAGE_CHUNKS == 1) ? ((heap_size - 2) / Fanout) :
           (heap_size - 2);
       do {
         _sift_down(first, less_comparer, heap_size, i);
@@ -345,8 +559,11 @@ public:
     assert(is_heap(first, last, less_comparer));
 
     const size_t heap_size = last - first;
-    if (heap_size > 1) {
-      _pop_heap(first, less_comparer, heap_size);
+    if (heap_size > 2) {
+      _pop_max_item(first, less_comparer, heap_size);
+    }
+    else if (heap_size == 2) {
+      std::swap(first[0], first[1]);
     }
 
     assert(is_heap(first, last - 1, less_comparer));
@@ -371,8 +588,11 @@ public:
     assert(last >= first);
 
     const size_t heap_size = last - first;
-    for (size_t i = heap_size; i > 1; --i) {
-      _pop_heap(first, less_comparer, i);
+    for (size_t i = heap_size; i > 2; --i) {
+      _pop_max_item(first, less_comparer, i);
+    }
+    if (heap_size > 1) {
+      std::swap(first[0], first[1]);
     }
   }
 
@@ -424,8 +644,11 @@ public:
     assert(item < last);
 
     const size_t heap_size = last - first;
-    const size_t item_index = item - first;
-    _sift_down(first, less_comparer, heap_size, item_index);
+
+    if (heap_size > 1) {
+      const size_t item_index = item - first;
+      _sift_down(first, less_comparer, heap_size, item_index);
+    }
 
     assert(is_heap(first, last, less_comparer));
   }
@@ -454,14 +677,21 @@ public:
     assert(is_heap(first, last, less_comparer));
 
     const size_t new_heap_size = last - first - 1;
-    const size_t item_index = item - first;
-    if (item_index < new_heap_size) {
-      _swap(*item, first[new_heap_size]);
-      if (less_comparer(*item, first[new_heap_size])) {
-        _sift_down(first, less_comparer, new_heap_size, item_index);
+    const size_t hole_index = item - first;
+    if (hole_index < new_heap_size) {
+      if (new_heap_size > 1) {
+        std::swap(first[new_heap_size], *item);
+        if (less_comparer(*item, first[new_heap_size])) {
+          _sift_down(first, less_comparer, new_heap_size, hole_index);
+        }
+        else {
+          _sift_up(first, less_comparer, 0, hole_index);
+        }
       }
       else {
-        _sift_up(first, less_comparer, 0, item_index);
+        assert(hole_index == 0);
+        assert(new_heap_size == 1);
+        std::swap(first[hole_index], first[new_heap_size]);
       }
     }
 
