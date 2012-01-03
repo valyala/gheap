@@ -46,9 +46,9 @@ The implementation provides the following functions:
   * get_parent_index() - returns parent index for the given child.
   * get_child_index() - returns the first child index for the given parent.
   * restore_heap_after_item_increase() - restores max heap invariant after
-    the item's value has been increased.
+    the item's value increase.
   * restore_heap_after_item_decrease() - restores max heap invariant after
-    the item's value has been decreased.
+    the item's value decrease.
   * remove_from_heap() - removes the given item from the heap.
 
 * STL-like functions:
