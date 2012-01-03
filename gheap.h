@@ -7,9 +7,6 @@
  * Don't forget passing -DNDEBUG option to the compiler when creating optimized
  * builds. This significantly speeds up gheap code by removing debug assertions.
  *
- * Pass -ftracer option to gcc when building a file with gheap.h included.
- * This significantly improves gheap performance.
- *
  * Author: Aliaksandr Valialkin <valyala@gmail.com>.
  */
 
@@ -131,8 +128,8 @@ static inline void gheap_remove_from_heap(const struct gheap_ctx *ctx,
  * Implementation.
  *
  * Define all functions inline, so compiler will be able optimizing out common
- * args (fanout, page_chunks, item_size and less_comparer), with are usually
- * constants, using contant folding optimization
+ * args (fanout, page_chunks, item_size, less_comparer and item_mover),
+ * which are usually constants, using contant folding optimization
  * ( http://en.wikipedia.org/wiki/Constant_folding ).
  *****************************************************************************/
 
