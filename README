@@ -46,9 +46,9 @@ The implementation provides the following functions:
   * get_parent_index() - returns parent index for the given child.
   * get_child_index() - returns the first child index for the given parent.
   * restore_heap_after_item_increase() - restores max heap invariant after
-    the item's value has been increased.
+    the item's value increase.
   * restore_heap_after_item_decrease() - restores max heap invariant after
-    the item's value has been decreased.
+    the item's value decrease.
   * remove_from_heap() - removes the given item from the heap.
 
 * STL-like functions:
@@ -112,18 +112,44 @@ static void less(const void *const a, const void *const b)
   return *(int *)a < *(int *)b;
 }
 
-static void heapsort(const size_t fanout, const size_t page_chunks,
+static void move(void *const dst, const void *const src)
+{
+  *(int *)dst = *(int *)src;
+}
+
+static void heapsort(const struct gheap_ctx *const ctx,
     int *const a, const size_t n)
 {
-  gheap_make_heap(fanout, page_chunks, sizeof(*a), less, a, n);
-  gheap_sort_heap(fanout, page_chunks, sizeof(*a), less, a, n);
+  gheap_make_heap(ctx, less, a, n);
+  gheap_sort_heap(ctx, less, a, n);
 }
 
 /* heapsort using binary heap */
-heapsort(2, 1, a, n);
+static const struct gheap_ctx binary_heap_ctx = {
+  .fanout = 2,
+  .page_chunks = 1,
+  .item_size = sizeof(int),
+  .less_comparer = &less,
+  .item_mover = &move,
+};
+heapsort(&binary_heap_ctx, a, n);
 
 /* heapsort using D-4 heap */
-heapsort(4, 1, a, n);
+static const struct gheap_ctx d4_heap_ctx = {
+  .fanout = 4,
+  .page_chunks = 1,
+  .item_size = sizeof(int),
+  .less_comparer = &less,
+  .item_mover = &move,
+};
+heapsort(&d4_heap_ctx, a, n);
 
 /* heapsort using paged binary heap */
-heapsort(2, 512, a, n);
+static const struct gheap_ctx paged_binary_heap_ctx = {
+  .fanout = 2,
+  .page_chunks = 512,
+  .item_size = sizeof(int),
+  .less_comparer = &less,
+  .item_mover = &move,
+};
+heapsort(&paged_binary_heap_ctx, a, n);
