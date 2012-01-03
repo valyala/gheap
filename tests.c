@@ -311,9 +311,9 @@ static void run_all(const struct gheap_ctx *const ctx,
 {
   int *const a = malloc(1001 * sizeof(*a));
 
-  func(ctx, 1, a);
-  func(ctx, 2, a);
-  func(ctx, 3, a);
+  for (size_t i = 1; i < 12; ++i) {
+    func(ctx, i, a);
+  }
   func(ctx, 1001, a);
 
   free(a);
