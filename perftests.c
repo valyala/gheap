@@ -90,17 +90,17 @@ static void perftest(const struct gheap_ctx *const ctx, int *const a,
   }
 }
 
+static const struct gheap_ctx ctx_v = {
+  .fanout = 2,
+  .page_chunks = 1,
+  .item_size = sizeof(int),
+  .less_comparer = &less,
+  .item_mover = &move,
+};
+
 int main(void)
 {
   static const size_t MAX_N = 32 * 1024 * 1024;
-
-  static const struct gheap_ctx ctx_v = {
-    .fanout = 2,
-    .page_chunks = 1,
-    .item_size = sizeof(int),
-    .less_comparer = &less,
-    .item_mover = &move,
-  };
 
   printf("fanout=%zu, page_chunks=%zu\n", ctx_v.fanout, ctx_v.page_chunks);
 
