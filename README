@@ -117,8 +117,8 @@ static void move(void *const dst, const void *const src)
 static void heapsort(const struct gheap_ctx *const ctx,
     int *const a, const size_t n)
 {
-  gheap_make_heap(ctx, less, a, n);
-  gheap_sort_heap(ctx, less, a, n);
+  gheap_make_heap(ctx, a, n);
+  gheap_sort_heap(ctx, a, n);
 }
 
 /* heapsort using binary heap */
