@@ -613,6 +613,7 @@ public:
       const LessComparer &less_comparer)
   {
     assert(item >= first);
+    assert(is_heap(first, item, less_comparer));
 
     const size_t item_index = item - first;
     if (item_index > 0) {
@@ -642,6 +643,7 @@ public:
     assert(last > first);
     assert(item >= first);
     assert(item < last);
+    assert(is_heap(first, item, less_comparer));
 
     const size_t heap_size = last - first;
 

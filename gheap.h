@@ -680,6 +680,7 @@ static inline void gheap_restore_heap_after_item_increase(
 {
   assert(heap_size > 0);
   assert(modified_item_index < heap_size);
+  assert(gheap_is_heap(ctx, base, modified_item_index));
 
   const size_t item_size = ctx->item_size;
   const gheap_item_mover_t item_mover = ctx->item_mover;
@@ -700,6 +701,7 @@ static inline void gheap_restore_heap_after_item_decrease(
 {
   assert(heap_size > 0);
   assert(modified_item_index < heap_size);
+  assert(gheap_is_heap(ctx, base, modified_item_index));
 
   const size_t item_size = ctx->item_size;
   const gheap_item_mover_t item_mover = ctx->item_mover;

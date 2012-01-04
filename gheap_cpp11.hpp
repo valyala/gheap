@@ -632,6 +632,7 @@ public:
       const LessComparer &less_comparer)
   {
     assert(item >= first);
+    assert(is_heap(first, item, less_comparer));
 
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         value_type;
@@ -665,6 +666,7 @@ public:
     assert(last > first);
     assert(item >= first);
     assert(item < last);
+    assert(is_heap(first, item, less_comparer));
 
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         value_type;
