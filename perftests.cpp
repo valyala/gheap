@@ -57,8 +57,8 @@ void perftest_heapsort(T *const a, const size_t n, const size_t m)
 
   double total_time = 0;
 
-  init_array(a, n);
   for (size_t i = 0; i < m / n; ++i) {
+    init_array(a, n);
     double start = get_time();
     Heap::make_heap(a, a + n);
     Heap::sort_heap(a, a + n);
