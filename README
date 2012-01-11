@@ -50,6 +50,7 @@ The implementation provides the following functions:
   * restore_heap_after_item_decrease() - restores max heap invariant after
     the item's value decrease.
   * remove_from_heap() - removes the given item from the heap.
+  * nway_merge() - performs N-way merge on top of the heap.
 
 * STL-like functions:
   * is_heap_until() - returns an iterator to the first non-heap item
