@@ -87,7 +87,7 @@ void perftest_nway_mergesort(T *const a, const size_t n, const size_t m)
   const size_t last_full_range = n - n % range_size;
 
   cout << "perftest_nway_mergesort(n=" << n << ", m=" << m << ", range_size=" <<
-      range_size << ")";
+      range_size << ", input_ranges_count=" << input_ranges_count << ")";
 
   double total_time = 0;
 
