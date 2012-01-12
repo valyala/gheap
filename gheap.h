@@ -315,6 +315,21 @@ static inline const void *_gheap_get_item_ptr(const struct gheap_ctx *const ctx,
   return ((char *)base) + offset;
 }
 
+/* Swaps items with given indexes */
+static void _gheap_swap(const struct gheap_ctx *const ctx, void *const base,
+    size_t a_index, size_t b_index)
+{
+  const size_t item_size = ctx->item_size;
+  const gheap_item_mover_t item_mover = ctx->item_mover;
+
+  char tmp[item_size];
+  void *const a = (void *) _gheap_get_item_ptr(ctx, base, a_index);
+  void *const b = (void *) _gheap_get_item_ptr(ctx, base, b_index);
+  item_mover(tmp, a);
+  item_mover(a, b);
+  item_mover(b, tmp);
+}
+
 /*
  * Sifts the item up in the given sub-heap with the given root_index
  * starting from the hole_index.
@@ -590,20 +605,6 @@ int _gheap_nway_less_comparer(const void *const ctx, const void *const a,
   const struct gheap_nway_input_vtable *const vtable = c->vtable;
 
   return less_comparer(less_comparer_ctx, vtable->get(b), vtable->get(a));
-}
-
-static void _gheap_swap(const struct gheap_ctx *const ctx, void *const base,
-    size_t a_index, size_t b_index)
-{
-  const size_t item_size = ctx->item_size;
-  const gheap_item_mover_t item_mover = ctx->item_mover;
-
-  char tmp[item_size];
-  void *const a = (void *) _gheap_get_item_ptr(ctx, base, a_index);
-  void *const b = (void *) _gheap_get_item_ptr(ctx, base, b_index);
-  item_mover(tmp, a);
-  item_mover(a, b);
-  item_mover(b, tmp);
 }
 
 static inline void gheap_nway_merge(const struct gheap_ctx *const ctx,
