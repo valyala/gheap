@@ -111,25 +111,25 @@ static const struct gheap_nway_output_vtable nway_output_vtable = {
 static void perftest_nway_mergesort(const struct gheap_ctx *const ctx,
     const size_t n, int *const a, const size_t m)
 {
-  const size_t input_ctxs_count = ((n >= 63) ? 63 : 1);
-  const size_t range_size = n / input_ctxs_count;
+  const size_t input_ranges_count = ((n >= 63) ? 63 : 1);
+  const size_t range_size = n / input_ranges_count;
   assert(range_size > 0);
   const size_t last_full_range = n - n % range_size;
 
-  printf("perftest_nway_mergesort(n=%zu, m=%zu, range_size=%zu)",
-      n, m, range_size);
+  printf("perftest_nway_mergesort(n=%zu, m=%zu, range_size=%zu, "
+      "input_ranges_count=%zu)", n, m, range_size, input_ranges_count);
 
   double total_time = 0;
 
   int *const b = malloc(sizeof(b[0]) * n);
 
   struct nway_input_ctx *const nway_input_ctxs =
-      malloc(sizeof(nway_input_ctxs[0]) * input_ctxs_count);
+      malloc(sizeof(nway_input_ctxs[0]) * input_ranges_count);
 
   const struct gheap_nway_input input = {
     .vtable = &nway_input_vtable,
     .ctxs = nway_input_ctxs,
-    .ctxs_count = input_ctxs_count,
+    .ctxs_count = input_ranges_count,
     .ctx_size = sizeof(struct nway_input_ctx),
     .ctx_mover = &nway_ctx_mover,
   };
@@ -154,12 +154,12 @@ static void perftest_nway_mergesort(const struct gheap_ctx *const ctx,
       input_ctx->end = a + (i + range_size);
     }
     if (n > last_full_range) {
-      assert(input_ctxs_count > 0);
-      assert(last_full_range == range_size * (input_ctxs_count - 1));
+      assert(input_ranges_count > 0);
+      assert(last_full_range == range_size * (input_ranges_count - 1));
 
       heapsort(ctx, a + last_full_range, n - last_full_range);
       struct nway_input_ctx *const input_ctx = &nway_input_ctxs[
-          input_ctxs_count - 1];
+          input_ranges_count - 1];
       input_ctx->next = a + last_full_range;
       input_ctx->end = a + n;
     }
