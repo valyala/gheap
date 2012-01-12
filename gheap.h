@@ -316,7 +316,7 @@ static inline const void *_gheap_get_item_ptr(const struct gheap_ctx *const ctx,
 }
 
 /* Swaps items with given indexes */
-static inline void _gheap_swap(const struct gheap_ctx *const ctx,
+static inline void _gheap_swap_items(const struct gheap_ctx *const ctx,
     const void *const base, const size_t a_index, const size_t b_index)
 {
   const size_t item_size = ctx->item_size;
@@ -639,7 +639,7 @@ static inline void gheap_nway_merge(const struct gheap_ctx *const ctx,
       if (inputs_count == 0) {
         break;
       }
-      _gheap_swap(&nway_ctx, top_input, 0, inputs_count);
+      _gheap_swap_items(&nway_ctx, top_input, 0, inputs_count);
     }
     gheap_restore_heap_after_item_decrease(&nway_ctx, top_input,
         inputs_count, 0);
