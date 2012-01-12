@@ -417,7 +417,7 @@ static inline void _gheap_sift_down(const struct gheap_ctx *const ctx,
 }
 
 /* Pops the maximum item from the heap into base[heap_size-1]. */
-static inline void _gheap_pop_heap(const struct gheap_ctx *const ctx,
+static inline void _gheap_pop_max_item(const struct gheap_ctx *const ctx,
     void *const base, const size_t heap_size)
 {
   assert(heap_size > 1);
@@ -507,7 +507,7 @@ static inline void gheap_pop_heap(const struct gheap_ctx *const ctx,
   assert(gheap_is_heap(ctx, base, heap_size));
 
   if (heap_size > 1) {
-    _gheap_pop_heap(ctx, base, heap_size);
+    _gheap_pop_max_item(ctx, base, heap_size);
   }
 
   assert(gheap_is_heap(ctx, base, heap_size - 1));
@@ -517,7 +517,7 @@ static inline void gheap_sort_heap(const struct gheap_ctx *const ctx,
     void *const base, const size_t heap_size)
 {
   for (size_t i = heap_size; i > 1; --i) {
-    _gheap_pop_heap(ctx, base, i);
+    _gheap_pop_max_item(ctx, base, i);
   }
 }
 

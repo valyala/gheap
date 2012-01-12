@@ -207,7 +207,7 @@ private:
 
   // Pops the maximum item from the heap into first[item_index].
   template <class RandomAccessIterator, class LessComparer>
-  static void _pop_heap(const RandomAccessIterator &first,
+  static void _pop_max_item(const RandomAccessIterator &first,
       const LessComparer &less_comparer, const size_t heap_size)
   {
       assert(heap_size > 1);
@@ -383,7 +383,7 @@ public:
 
     const size_t heap_size = last - first;
     if (heap_size > 1) {
-      _pop_heap(first, less_comparer, heap_size);
+      _pop_max_item(first, less_comparer, heap_size);
     }
 
     assert(is_heap(first, last - 1, less_comparer));
@@ -409,7 +409,7 @@ public:
 
     const size_t heap_size = last - first;
     for (size_t i = heap_size; i > 1; --i) {
-      _pop_heap(first, less_comparer, i);
+      _pop_max_item(first, less_comparer, i);
     }
   }
 
