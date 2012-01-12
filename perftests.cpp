@@ -81,7 +81,7 @@ void perftest_heapsort(T *const a, const size_t n, const size_t m)
 template <class T, class Heap>
 void perftest_nway_mergesort(T *const a, const size_t n, const size_t m)
 {
-  const size_t input_ranges_count = ((n >= 128) ? 128 : 1);
+  const size_t input_ranges_count = ((n >= 63) ? 63 : 1);
   const size_t range_size = n / input_ranges_count;
   assert(range_size > 0);
   const size_t last_full_range = n - n % range_size;

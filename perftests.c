@@ -111,7 +111,7 @@ static const struct gheap_nway_output_vtable nway_output_vtable = {
 static void perftest_nway_mergesort(const struct gheap_ctx *const ctx,
     const size_t n, int *const a, const size_t m)
 {
-  const size_t input_ctxs_count = ((n >= 128) ? 128 : 1);
+  const size_t input_ctxs_count = ((n >= 63) ? 63 : 1);
   const size_t range_size = n / input_ctxs_count;
   assert(range_size > 0);
   const size_t last_full_range = n - n % range_size;
