@@ -20,9 +20,11 @@
 
 /*
  * Less comparer must return non-zero value if a < b.
+ * ctx is the gheap_ctx->less_comparer_ctx.
  * Otherwise it must return 0.
  */
-typedef int (*gheap_less_comparer_t)(const void *a, const void *b);
+typedef int (*gheap_less_comparer_t)(const void *ctx, const void *a,
+    const void *b);
 
 /*
  * Moves the item from src to dst.
@@ -39,6 +41,7 @@ struct gheap_ctx
   size_t page_chunks;
   size_t item_size;
   gheap_less_comparer_t less_comparer;
+  const void *less_comparer_ctx;
   gheap_item_mover_t item_mover;
 };
 
@@ -110,6 +113,89 @@ static inline void gheap_restore_heap_after_item_decrease(
 static inline void gheap_remove_from_heap(const struct gheap_ctx *ctx,
     void *base, size_t heap_size, size_t item_index);
 
+/*
+ * Vtable for input iterators, which is passed to gheap_nway_merge().
+ */
+struct gheap_nway_input_vtable
+{
+  /*
+   * Must advance the iterator to the next item.
+   * Must return non-zero on success or 0 on the end of input.
+   */
+  int (*next)(void *ctx);
+
+  /*
+   * Must return a pointer to the current item.
+   * Gheap won't call this function after the next() returns 0.
+   */
+  const void *(*get)(const void *ctx);
+};
+
+/*
+ * A collection of input iterators, which is passed to gheap_nway_merge().
+ */
+struct gheap_nway_input
+{
+  const struct gheap_nway_input_vtable *vtable;
+
+  /*
+   * An array of opaque contexts, which are passed to vtable functions.
+   * Each context represents a single input iterator.
+   * Contextes must contain data reqired for fetching items from distinct
+   * input iterators.
+   *
+   * Gheap shuffless contextes in this array using ctx_mover.
+   */
+  void *ctxs;
+
+  /* The number of contextes. */
+  size_t ctxs_count;
+
+  /* The size of each context object. */
+  size_t ctx_size;
+
+  /* Is used for shiffling context objects. */
+  gheap_item_mover_t ctx_mover;
+};
+
+/*
+ * Vtable for output iterator, which is passed to gheap_nway_merge().
+ */
+struct gheap_nway_output_vtable
+{
+  /*
+   * Must put data into the output and advance the iterator
+   * to the next position.
+   */
+  void (*put)(void *ctx, const void *data);
+};
+
+/*
+ * Output iterator, which is passed to gheap_nway_merge().
+ */
+struct gheap_nway_output
+{
+  const struct gheap_nway_output_vtable *vtable;
+
+  /*
+   * An opaque context, which is passed to vtable functions.
+   * The context must contain data essential for the output iterator.
+   */
+  void *ctx;
+};
+
+/*
+ * Performs N-way merging of the given inputs into the output sorted
+ * in ascending order, using less_comparer for items' comparison.
+ *
+ * Each input must hold non-zero number of items sorted in ascending order.
+ *
+ * As a side effect the function shuffles input contextes.
+ */
+static inline void gheap_nway_merge(const struct gheap_ctx *ctx,
+    const struct gheap_nway_input *input,
+    const struct gheap_nway_output *output);
+
 
 /*******************************************************************************
  * Implementation.
@@ -122,7 +208,7 @@ static inline void gheap_remove_from_heap(const struct gheap_ctx *ctx,
 
 #include <assert.h>     /* for assert */
 #include <stddef.h>     /* for size_t */
-#include <stdint.h>     /* for SIZE_MAX and UINTPTR_MAX */
+#include <stdint.h>     /* for uintptr_t, SIZE_MAX and UINTPTR_MAX */
 
 
 /* Returns a pointer to base[index]. */
@@ -161,16 +247,23 @@ static inline void _gheap_move(const struct gheap_ctx *const ctx,
 static inline int _gheap_less(const struct gheap_ctx *const ctx,
     const void *const base, const size_t a_index, const size_t b_index)
 {
-  return ctx->less_comparer(_gheap_get_item_ptr(ctx, base, a_index),
+  const gheap_less_comparer_t less_comparer = ctx->less_comparer;
+  const void *const less_comparer_ctx = ctx->less_comparer_ctx;
+
+  return less_comparer(less_comparer_ctx,
+      _gheap_get_item_ptr(ctx, base, a_index),
       _gheap_get_item_ptr(ctx, base, b_index));
 }
 
 /* Swaps items with given indexes */
-static inline void _gheap_swap(const struct gheap_ctx *const ctx,
+static inline void _gheap_swap_items(const struct gheap_ctx *const ctx,
     const void *const base, const size_t a_index, const size_t b_index)
 {
-  char tmp[ctx->item_size];
-  ctx->item_mover(tmp, _gheap_get_item_ptr(ctx, base, a_index));
+  const size_t item_size = ctx->item_size;
+  const gheap_item_mover_t item_mover = ctx->item_mover;
+
+  char tmp[item_size];
+  item_mover(tmp, _gheap_get_item_ptr(ctx, base, a_index));
   _gheap_move(ctx, base, a_index, b_index);
   _gheap_move_item(ctx, base, b_index, tmp);
 }
@@ -189,6 +282,7 @@ static inline void _gheap_sift_up(const struct gheap_ctx *const ctx,
   const size_t page_chunks = ctx->page_chunks;
   const size_t page_size = page_chunks * fanout;
   const gheap_less_comparer_t less_comparer = ctx->less_comparer;
+  const void *const less_comparer_ctx = ctx->less_comparer_ctx;
 
   const size_t min_hole_index = root_index * page_size;
 
@@ -209,7 +303,7 @@ static inline void _gheap_sift_up(const struct gheap_ctx *const ctx,
         assert(base_index + rel_parent_index > root_index);
         const void *const parent = _gheap_get_item_ptr(ctx, base,
             base_index + rel_parent_index);
-        if (!less_comparer(parent, item)) {
+        if (!less_comparer(less_comparer_ctx, parent, item)) {
           goto end;
         }
 
@@ -222,7 +316,7 @@ static inline void _gheap_sift_up(const struct gheap_ctx *const ctx,
     // Sift the item up into the parent page.
     assert(parent_index >= root_index);
     const void *const parent = _gheap_get_item_ptr(ctx, base, parent_index);
-    if (!less_comparer(parent, item)) {
+    if (!less_comparer(less_comparer_ctx, parent, item)) {
       goto end;
     }
 
@@ -244,7 +338,7 @@ static inline void _gheap_sift_up(const struct gheap_ctx *const ctx,
         assert(base_index + rel_parent_index >= root_index);
         const void *const parent = _gheap_get_item_ptr(ctx, base,
             base_index + rel_parent_index);
-        if (!less_comparer(parent, item)) {
+        if (!less_comparer(less_comparer_ctx, parent, item)) {
           goto end;
         }
 
@@ -657,7 +751,7 @@ static inline void gheap_pop_heap(const struct gheap_ctx *const ctx,
     _gheap_pop_max_item(ctx, base, heap_size);
   }
   else if (heap_size == 2) {
-    _gheap_swap(ctx, base, 0, 1);
+    _gheap_swap_items(ctx, base, 0, 1);
   }
 
   assert(gheap_is_heap(ctx, base, heap_size - 1));
@@ -670,7 +764,7 @@ static inline void gheap_sort_heap(const struct gheap_ctx *const ctx,
     _gheap_pop_max_item(ctx, base, i);
   }
   if (heap_size > 1) {
-    _gheap_swap(ctx, base, 0, 1);
+    _gheap_swap_items(ctx, base, 0, 1);
   }
 }
 
@@ -724,6 +818,7 @@ static inline void gheap_remove_from_heap(const struct gheap_ctx *const ctx,
 
   const size_t item_size = ctx->item_size;
   const gheap_less_comparer_t less_comparer = ctx->less_comparer;
+  const void *const less_comparer_ctx = ctx->less_comparer_ctx;
   const gheap_item_mover_t item_mover = ctx->item_mover;
 
   const size_t new_heap_size = heap_size - 1;
@@ -733,7 +828,7 @@ static inline void gheap_remove_from_heap(const struct gheap_ctx *const ctx,
       void *const hole = (void *) _gheap_get_item_ptr(ctx, base, new_heap_size);
       item_mover(tmp, hole);
       item_mover(hole, _gheap_get_item_ptr(ctx, base, item_index));
-      if (less_comparer(tmp, hole)) {
+      if (less_comparer(less_comparer_ctx, tmp, hole)) {
         _gheap_sift_down(ctx, base, new_heap_size, item_index, tmp);
       }
       else {
@@ -743,11 +838,68 @@ static inline void gheap_remove_from_heap(const struct gheap_ctx *const ctx,
     else {
       assert(item_index == 0);
       assert(new_heap_size == 1);
-      _gheap_swap(ctx, base, 0, 1);
+      _gheap_swap_items(ctx, base, 0, 1);
     }
   }
 
   assert(gheap_is_heap(ctx, base, new_heap_size));
+}
+
+struct _gheap_nway_less_comparer_ctx
+{
+  gheap_less_comparer_t less_comparer;
+  const void *less_comparer_ctx;
+  const struct gheap_nway_input_vtable *vtable;
+};
+
+int _gheap_nway_less_comparer(const void *const ctx, const void *const a,
+    const void *const b)
+{
+  const struct _gheap_nway_less_comparer_ctx *const c = ctx;
+  const gheap_less_comparer_t less_comparer = c->less_comparer;
+  const void *const less_comparer_ctx = c->less_comparer_ctx;
+  const struct gheap_nway_input_vtable *const vtable = c->vtable;
+
+  return less_comparer(less_comparer_ctx, vtable->get(b), vtable->get(a));
+}
+
+static inline void gheap_nway_merge(const struct gheap_ctx *const ctx,
+    const struct gheap_nway_input *const input,
+    const struct gheap_nway_output *const output)
+{
+  void *const top_input = input->ctxs;
+  size_t inputs_count = input->ctxs_count;
+
+  assert(inputs_count > 0);
+
+  const struct _gheap_nway_less_comparer_ctx less_comparer_ctx = {
+    .less_comparer = ctx->less_comparer,
+    .less_comparer_ctx = ctx->less_comparer_ctx,
+    .vtable = input->vtable,
+  };
+  const struct gheap_ctx nway_ctx = {
+    .fanout = ctx->fanout,
+    .page_chunks = ctx->page_chunks,
+    .item_size = input->ctx_size,
+    .less_comparer = &_gheap_nway_less_comparer,
+    .less_comparer_ctx = &less_comparer_ctx,
+    .item_mover = input->ctx_mover,
+  };
+
+  gheap_make_heap(&nway_ctx, top_input, inputs_count);
+  while (1) {
+    const void *const data = input->vtable->get(top_input);
+    output->vtable->put(output->ctx, data);
+    if (!input->vtable->next(top_input)) {
+      --inputs_count;
+      if (inputs_count == 0) {
+        break;
+      }
+      _gheap_swap_items(&nway_ctx, top_input, 0, inputs_count);
+    }
+    gheap_restore_heap_after_item_decrease(&nway_ctx, top_input,
+        inputs_count, 0);
+  }
 }
 
 #endif

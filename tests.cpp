@@ -10,11 +10,11 @@
 #include <cstdlib>    // for srand(), rand()
 #include <deque>
 #include <iostream>   // for cout
+#include <iterator>   // for back_inserter
 #include <vector>
+#include <utility>    // for pair
 
-#ifdef GHEAP_CPP11
-#  include <utility>    // for swap()
-#else
+#ifndef GHEAP_CPP11
 #  include <algorithm>  // for swap()
 #endif
 
@@ -102,7 +102,7 @@ void assert_sorted_desc(const RandomAccessIterator &first,
   }
 }
 
-bool inverse_less_comparer(const int a, const int b)
+bool less_comparer_desc(const int a, const int b)
 {
   return (b < a);
 }
@@ -125,9 +125,9 @@ void test_heapsort(const size_t n)
 
   // Verify descending sorting with custom less_comparer.
   init_array(&a, n);
-  heap::make_heap(a.begin(), a.end(), inverse_less_comparer);
-  assert(heap::is_heap(a.begin(), a.end(), inverse_less_comparer));
-  heap::sort_heap(a.begin(), a.end(), inverse_less_comparer);
+  heap::make_heap(a.begin(), a.end(), less_comparer_desc);
+  assert(heap::is_heap(a.begin(), a.end(), less_comparer_desc));
+  heap::sort_heap(a.begin(), a.end(), less_comparer_desc);
   assert_sorted_desc(a.begin(), a.end());
 
   cout << "OK" << endl;
@@ -257,6 +257,64 @@ void test_remove_from_heap(const size_t n)
   cout << "OK" << endl;
 }
 
+template <class RandomAccessIterator, class Heap>
+void heapsort(const RandomAccessIterator &first,
+    const RandomAccessIterator &last)
+{
+  Heap::make_heap(first, last);
+  Heap::sort_heap(first, last);
+}
+
+template <size_t Fanout, size_t PageChunks, class IntContainer>
+void test_nway_merge(const size_t n)
+{
+  typedef gheap<Fanout, PageChunks> heap;
+  typedef typename IntContainer::iterator iterator;
+
+  cout << "    test_nway_merge(n=" << n << ") ";
+
+  IntContainer a, b;
+  vector<pair<iterator, iterator> > input_ranges;
+
+  // Check 1-way merge.
+  init_array(&a, n);
+  b.clear();
+  input_ranges.clear();
+  heapsort<iterator, heap>(a.begin(), a.end());
+  input_ranges.push_back(pair<iterator, iterator>(a.begin(), a.end()));
+  heap::nway_merge(input_ranges.begin(), input_ranges.end(), back_inserter(b));
+  assert_sorted_asc(b.begin(), b.end());
+
+  // Check 2-way merge.
+  if (n > 1) {
+    init_array(&a, n);
+    b.clear();
+    input_ranges.clear();
+    const iterator middle = a.begin() + n / 2;
+    heapsort<iterator, heap>(a.begin(), middle);
+    heapsort<iterator, heap>(middle, a.end());
+    input_ranges.push_back(pair<iterator, iterator>(a.begin(), middle));
+    input_ranges.push_back(pair<iterator, iterator>(middle, a.end()));
+    heap::nway_merge(input_ranges.begin(), input_ranges.end(),
+        back_inserter(b));
+    assert_sorted_asc(b.begin(), b.end());
+  }
+
+  // Check n-way merge with n sorted lists each containing exactly one item.
+  init_array(&a, n);
+  b.clear();
+  input_ranges.clear();
+  for (size_t i = 0; i < n; ++i) {
+    input_ranges.push_back(pair<iterator, iterator>(a.begin() + i,
+        a.begin() + (i + 1)));
+  }
+  heap::nway_merge(input_ranges.begin(), input_ranges.end(), back_inserter(b));
+  assert_sorted_asc(b.begin(), b.end());
+
+
+  cout << "OK" << endl;
+}
+
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_priority_queue(const size_t n)
 {
@@ -346,6 +404,7 @@ void test_all()
   test_func(test_restore_heap_after_item_decrease<Fanout, PageChunks,
       IntContainer>);
   test_func(test_remove_from_heap<Fanout, PageChunks, IntContainer>);
+  test_func(test_nway_merge<Fanout, PageChunks, IntContainer>);
   test_func(test_priority_queue<Fanout, PageChunks, IntContainer>);
 
   cout << "  test_all(Fanout=" << Fanout << ", PageChunks=" << PageChunks <<

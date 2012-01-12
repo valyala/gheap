@@ -4,18 +4,15 @@
 #include "gpriority_queue.h"
 
 #include <assert.h>
-#include <stdint.h>    /* for SIZE_MAX */
+#include <stdint.h>    /* for uintptr_t, SIZE_MAX */
 #include <stdio.h>     /* for printf() */
 #include <stdlib.h>    /* for srand(), rand(), malloc(), free() */
 
-static int less_comparer_asc(const void *const a, const void *const b)
+static int less_comparer(const void *const ctx, const void *const a,
+    const void *const b)
 {
-  return *((int *)a) < *((int *)b);
-}
-
-static int less_comparer_desc(const void *const a, const void *const b)
-{
-  return *((int *)b) < *((int *)a);
+  uintptr_t must_invert = (uintptr_t)ctx;
+  return (must_invert ? (*(int *)b < *(int *)a): (*(int *)a < *(int *)b));
 }
 
 static void item_mover(void *const dst, const void *const src)
@@ -64,18 +61,23 @@ static void init_array(int *const a, const size_t n)
   }
 }
 
-static void assert_sorted_asc(const int *const base, const size_t n)
+static void assert_sorted(const struct gheap_ctx *const ctx,
+    const int *const base, const size_t n)
 {
+  const gheap_less_comparer_t less_comparer = ctx->less_comparer;
+  const void *const less_comparer_ctx = ctx->less_comparer_ctx;
+
   for (size_t i = 1; i < n; ++i) {
-    assert(base[i] >= base[i - 1]);
+    assert(!less_comparer(less_comparer_ctx, &base[i], &base[i - 1]));
   }
 }
 
-static void assert_sorted_desc(const int *const base, const size_t n)
+static void heapsort(const struct gheap_ctx *const ctx,
+    int *const a, const size_t n)
 {
-  for (size_t i = 1; i < n; ++i) {
-    assert(base[i] <= base[i - 1]);
-  }
+  gheap_make_heap(ctx, a, n);
+  gheap_sort_heap(ctx, a, n);
+  assert_sorted(ctx, a, n);
 }
 
 static void test_heapsort(const struct gheap_ctx *const ctx,
@@ -85,26 +87,20 @@ static void test_heapsort(const struct gheap_ctx *const ctx,
 
   /* Verify ascending sorting. */
   init_array(a, n);
-  gheap_make_heap(ctx, a, n);
-  assert(gheap_is_heap(ctx, a, n));
-  gheap_sort_heap(ctx, a, n);
-  assert_sorted_asc(a, n);
+  heapsort(ctx, a, n);
 
   /* Verify descending sorting. */
-  const struct gheap_ctx ctx_desc_v = {
+  const struct gheap_ctx ctx_desc = {
     .fanout = ctx->fanout,
     .page_chunks = ctx->page_chunks,
     .item_size = ctx->item_size,
-    .less_comparer = &less_comparer_desc,
+    .less_comparer = &less_comparer,
+    .less_comparer_ctx = (void *)1,
     .item_mover = ctx->item_mover,
   };
-  const struct gheap_ctx *const ctx_desc = &ctx_desc_v;
 
   init_array(a, n);
-  gheap_make_heap(ctx_desc, a, n);
-  assert(gheap_is_heap(ctx_desc, a, n));
-  gheap_sort_heap(ctx_desc, a, n);
-  assert_sorted_desc(a, n);
+  heapsort(&ctx_desc, a, n);
 
   printf("OK\n");
 }
@@ -138,7 +134,7 @@ static void test_pop_heap(const struct gheap_ctx *const ctx,
     gheap_pop_heap(ctx, a, n - i);
     assert(item == a[n - i - 1]);
   }
-  assert_sorted_asc(a, n);
+  assert_sorted(ctx, a, n);
 
   printf("OK\n");
 }
@@ -215,6 +211,140 @@ static void test_remove_from_heap(const struct gheap_ctx *const ctx,
     assert(gheap_is_heap(ctx, a, n - i - 1));
     assert(item == a[n - i - 1]);
   }
+
+  printf("OK\n");
+}
+
+struct nway_input_ctx
+{
+  int *next;
+  int *end;
+};
+
+static int nway_input_next(void *const ctx)
+{
+  struct nway_input_ctx *const c = ctx;
+  assert(c->next <= c->end);
+  if (c->next < c->end) {
+    ++(c->next);
+  }
+  return (c->next < c->end);
+}
+
+static const void *nway_input_get(const void *const ctx)
+{
+  const struct nway_input_ctx *const c = ctx;
+  assert(c->next < c->end);
+  return c->next;
+}
+
+static void nway_ctx_mover(void *const dst, const void *const src)
+{
+  *(struct nway_input_ctx *)dst = *(struct nway_input_ctx *)src;
+}
+
+static const struct gheap_nway_input_vtable nway_input_vtable = {
+  .next = &nway_input_next,
+  .get = &nway_input_get,
+};
+
+struct nway_output_ctx
+{
+  int *next;
+};
+
+static void nway_output_put(void *const ctx, const void *const data)
+{
+  struct nway_output_ctx *const c = ctx;
+  *(c->next) = *(int *)data;
+  ++(c->next);
+}
+
+static const struct gheap_nway_output_vtable nway_output_vtable = {
+  .put = &nway_output_put,
+};
+
+static void test_nway_merge(const struct gheap_ctx *const ctx,
+    const size_t n, int *const a)
+{
+  printf("    test_nway_merge(n=%zu) ", n);
+
+  int *const b = malloc(sizeof(*b) * n);
+
+  struct gheap_nway_input input = {
+    .vtable = &nway_input_vtable,
+    .ctxs = NULL,
+    .ctxs_count = 0,
+    .ctx_size = sizeof(struct nway_input_ctx),
+    .ctx_mover = &nway_ctx_mover,
+  };
+
+  struct nway_output_ctx out_ctx;
+
+  const struct gheap_nway_output output = {
+    .vtable = &nway_output_vtable,
+    .ctx = &out_ctx,
+  };
+
+  // Check 1-way merge.
+  init_array(a, n);
+  heapsort(ctx, a, n);
+
+  struct nway_input_ctx one_way_input_ctxs[1] = {
+    {
+      .next = a,
+      .end = a + n,
+    },
+  };
+
+  input.ctxs = one_way_input_ctxs;
+  input.ctxs_count = 1;
+  out_ctx.next = b;
+  gheap_nway_merge(ctx, &input, &output);
+  assert_sorted(ctx, b, n);
+
+  // Check 2-way merge.
+  if (n > 1) {
+    init_array(a, n);
+    heapsort(ctx, a, n / 2);
+    heapsort(ctx, a + n / 2, n - n / 2);
+
+    struct nway_input_ctx two_way_input_ctxs[2] = {
+      {
+        .next = a,
+        .end = a + n / 2,
+      },
+      {
+        .next = a + n / 2,
+        .end = a + n,
+      },
+    };
+
+    input.ctxs = two_way_input_ctxs;
+    input.ctxs_count = 2;
+    out_ctx.next = b;
+    gheap_nway_merge(ctx, &input, &output);
+    assert_sorted(ctx, b, n);
+  }
+
+  // Check n-way merge with n sorted lists each containing exactly one item.
+  init_array(a, n);
+  struct nway_input_ctx *const nway_input_ctxs =
+      malloc(sizeof(nway_input_ctxs[0]) * n);
+  for (size_t i = 0; i < n; ++i) {
+    struct nway_input_ctx *const input_ctx = &nway_input_ctxs[i];
+    input_ctx->next = a + i;
+    input_ctx->end = a + (i + 1);
+  }
+
+  input.ctxs = nway_input_ctxs;
+  input.ctxs_count = n;
+  out_ctx.next = b;
+  gheap_nway_merge(ctx, &input, &output);
+  assert_sorted(ctx, b, n);
+  free(nway_input_ctxs);
+
+  free(b);
 
   printf("OK\n");
 }
@@ -300,7 +430,8 @@ static void test_all(const size_t fanout, const size_t page_chunks)
       .fanout = fanout,
       .page_chunks = page_chunks,
       .item_size = sizeof(int),
-      .less_comparer = &less_comparer_asc,
+      .less_comparer = &less_comparer,
+      .less_comparer_ctx = (void *)0,
       .item_mover = &item_mover,
   };
   const struct gheap_ctx *const ctx = &ctx_v;
@@ -312,6 +443,7 @@ static void test_all(const size_t fanout, const size_t page_chunks)
   run_all(ctx, test_restore_heap_after_item_increase);
   run_all(ctx, test_restore_heap_after_item_decrease);
   run_all(ctx, test_remove_from_heap);
+  run_all(ctx, test_nway_merge);
   run_all(ctx, test_priority_queue);
 
   printf("  test_all(fanout=%zu, page_chunks=%zu) OK\n", fanout, page_chunks);

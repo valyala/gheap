@@ -20,7 +20,7 @@
 #include <cassert>     // for assert
 #include <cstddef>     // for size_t
 #include <iterator>    // for std::iterator_traits
-#include <utility>     // for std::move(), std::swap().
+#include <utility>     // for std::move(), std::swap(), std::pair
 
 template <size_t Fanout, size_t PageChunks = 1>
 class gheap
@@ -349,13 +349,36 @@ end:
   }
 
   // Standard less comparer.
-  template <class RandomAccessIterator>
+  template <class InputIterator>
   static bool _std_less_comparer(
-      const typename std::iterator_traits<RandomAccessIterator>::value_type &a,
-      const typename std::iterator_traits<RandomAccessIterator>::value_type &b)
+      const typename std::iterator_traits<InputIterator>::value_type &a,
+      const typename std::iterator_traits<InputIterator>::value_type &b)
   {
     return (a < b);
   }
+
+  // Less comparer for nway_merge().
+  template <class LessComparer>
+  class _nway_merge_less_comparer
+  {
+  private:
+    const LessComparer &_less_comparer;
+
+  public:
+    _nway_merge_less_comparer(const LessComparer &less_comparer) :
+        _less_comparer(less_comparer) {}
+
+    template <class InputIterator>
+    bool operator() (
+      const std::pair<InputIterator, InputIterator> &input_range_a,
+      const std::pair<InputIterator, InputIterator> &input_range_b) const
+    {
+      assert(input_range_a.first != input_range_a.second);
+      assert(input_range_b.first != input_range_b.second);
+
+      return _less_comparer(*(input_range_b.first), *(input_range_a.first));
+    }
+  };
 
 public:
 
@@ -740,6 +763,74 @@ public:
     remove_from_heap(first, item, last,
         _std_less_comparer<RandomAccessIterator>);
   }
-};
 
+  // Performs N-way merging of the given input ranges into the result sorted
+  // in ascending order, using less_comparer for items' comparison.
+  //
+  // Each input range must hold non-zero number of items sorted
+  // in ascending order. Each range is defined as a std::pair containing
+  // input iterators, where the first iterator points to the beginning
+  // of the range, while the second iterator points to the end of the range.
+  //
+  // As a side effect the function shuffles input ranges between
+  // [input_ranges_first ... input_ranges_last) and sets the first iterator
+  // for each input range to the end of the corresponding range.
+  template <class RandomAccessIterator, class OutputIterator,
+      class LessComparer>
+  static void nway_merge(const RandomAccessIterator &input_ranges_first,
+      const RandomAccessIterator &input_ranges_last,
+      const OutputIterator &result, const LessComparer &less_comparer)
+  {
+    assert(input_ranges_first < input_ranges_last);
+
+    typedef typename std::iterator_traits<RandomAccessIterator>::value_type
+        input_range_iterator;
+
+    const RandomAccessIterator &first = input_ranges_first;
+    RandomAccessIterator last = input_ranges_last;
+    OutputIterator output = result;
+
+    const _nway_merge_less_comparer<LessComparer> less(less_comparer);
+
+    make_heap(first, last, less);
+    while (true) {
+      input_range_iterator &input_range = first[0];
+      assert(input_range.first != input_range.second);
+      *output = *(input_range.first);
+      ++output;
+      ++(input_range.first);
+      if (input_range.first == input_range.second) {
+        --last;
+        if (first == last) {
+          break;
+        }
+        std::swap(*first, *last);
+      }
+      restore_heap_after_item_decrease(first, first, last, less);
+    }
+  }
+
+  // Performs N-way merging of the given input ranges into the result sorted
+  // in ascending order, using operator< for items' comparison.
+  //
+  // Each input range must hold non-zero number of items sorted
+  // in ascending order. Each range is defined as a std::pair containing
+  // input iterators, where the first iterator points to the beginning
+  // of the range, while the second iterator points to the end of the range.
+  //
+  // As a side effect the function shuffles input ranges between
+  // [input_ranges_first ... input_ranges_last) and sets the first iterator
+  // for each input range to the end of the corresponding range.
+  template <class RandomAccessIterator, class OutputIterator>
+  static void nway_merge(const RandomAccessIterator &input_ranges_first,
+      const RandomAccessIterator &input_ranges_last,
+      const OutputIterator &result)
+  {
+    typedef typename std::iterator_traits<RandomAccessIterator
+        >::value_type::first_type input_iterator;
+
+    nway_merge(input_ranges_first, input_ranges_last, result,
+        _std_less_comparer<input_iterator>);
+  }
+};
 #endif
