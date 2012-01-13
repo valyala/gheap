@@ -18,7 +18,7 @@ for particular cases:
       to items.
     * If the number of 'decrease key' operations is larger than the number
       of 'pop heap' operations for min-heap. This is usually the case
-      for Dijkstra algorihm
+      for Dijkstra algorithm
       ( http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm ).
 
 * PageChunks. The number of chunks per each heap page. Each chunk contains
