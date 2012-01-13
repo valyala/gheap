@@ -94,7 +94,8 @@ void move_items(T *const src, const size_t n, T *const dst)
 }
 
 template <class T, class Heap>
-void nway_mergesort(T *const a, const size_t n, const size_t input_ranges_count)
+void nway_mergesort(T *const a, const size_t n, T *const tmp_buf,
+    const size_t input_ranges_count)
 {
   assert(input_ranges_count > 0);
 
@@ -110,21 +111,18 @@ void nway_mergesort(T *const a, const size_t n, const size_t input_ranges_count)
 
   vector<pair<T *, T *> > input_ranges;
   for (size_t i = 0; i < last_full_range; i += range_size) {
-    nway_mergesort<T, Heap>(a + i, range_size, input_ranges_count);
+    nway_mergesort<T, Heap>(a + i, range_size, tmp_buf, input_ranges_count);
     input_ranges.push_back(pair<T *, T *>(a + i, a + (i + range_size)));
   }
   if (n > last_full_range) {
-    nway_mergesort<T, Heap>(a + last_full_range, n - last_full_range,
+    nway_mergesort<T, Heap>(a + last_full_range, n - last_full_range, tmp_buf,
         input_ranges_count);
     input_ranges.push_back(pair<T *, T *>(a + last_full_range, a + n));
   }
 
-  const pair<T *, ptrdiff_t> tmp_buf = get_temporary_buffer<T>(n);
-  T *const b = tmp_buf.first;
   Heap::nway_merge(input_ranges.begin(), input_ranges.end(),
-      raw_storage_iterator<T *, T>(b));
-  move_items(b, n, a);
-  return_temporary_buffer(b);
+      raw_storage_iterator<T *, T>(tmp_buf));
+  move_items(tmp_buf, n, a);
 }
 
 template <class T, class Heap>
@@ -141,7 +139,9 @@ void perftest_nway_mergesort(T *const a, const size_t n, const size_t m)
     init_array(a, n);
 
     double start = get_time();
-    nway_mergesort<T, Heap>(a, n, input_ranges_count);
+    const pair<T *, ptrdiff_t> tmp_buf = get_temporary_buffer<T>(n);
+    nway_mergesort<T, Heap>(a, n, tmp_buf.first, input_ranges_count);
+    return_temporary_buffer(tmp_buf.first);
     double end = get_time();
 
     total_time += end - start;
