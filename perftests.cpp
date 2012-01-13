@@ -4,13 +4,14 @@
 #include "gheap.hpp"
 #include "gpriority_queue.hpp"
 
-#include <algorithm>  // for *_heap(), copy()
+#include <algorithm>  // for *_heap(), copy(), move()
 #include <cstdlib>    // for rand(), srand()
 #include <ctime>      // for clock()
 #include <iostream>
+#include <memory>     // for *_temporary_buffer(), raw_storage_iterator()
 #include <queue>      // for priority_queue
-#include <utility>    // for std::pair
-#include <vector>     // for std::vector
+#include <utility>    // for pair
+#include <vector>     // for vector
 
 using namespace std;
 
@@ -79,9 +80,24 @@ void perftest_heapsort(T *const a, const size_t n, const size_t m)
   print_performance(total_time, m);
 }
 
+template <class T>
+void move_items(T *const src, const size_t n, T *const dst)
+{
+#ifdef GHEAP_CPP11
+  move(src, src + n, dst);
+#else
+  copy(src, src + n, dst);
+  for (size_t i = 0; i < n; ++i) {
+    src[i].~T();
+  }
+#endif
+}
+
 template <class T, class Heap>
 void nway_mergesort(T *const a, const size_t n, const size_t input_ranges_count)
 {
+  assert(input_ranges_count > 0);
+
   const size_t critical_range_size = (1 << 18) - 1;
 
   if (n <= critical_range_size) {
@@ -103,10 +119,12 @@ void nway_mergesort(T *const a, const size_t n, const size_t input_ranges_count)
     input_ranges.push_back(pair<T *, T *>(a + last_full_range, a + n));
   }
 
-  T *const b = new T[n];
-  Heap::nway_merge(input_ranges.begin(), input_ranges.end(), b);
-  copy(b, b + n, a);
-  delete[] b;
+  const pair<T *, ptrdiff_t> tmp_buf = get_temporary_buffer<T>(n);
+  T *const b = tmp_buf.first;
+  Heap::nway_merge(input_ranges.begin(), input_ranges.end(),
+      raw_storage_iterator<T *, T>(b));
+  move_items(b, n, a);
+  return_temporary_buffer(b);
 }
 
 template <class T, class Heap>
@@ -196,7 +214,7 @@ int main(void)
   T *const a = new T[MAX_N];
 
   cout << "* STL heap" << endl;
-  perftest_stl_heap(a, MAX_N);
+//  perftest_stl_heap(a, MAX_N);
 
   cout << "* gheap" << endl;
   perftest_gheap<T, gheap<FANOUT, PAGE_CHUNKS>,
