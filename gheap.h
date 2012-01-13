@@ -31,6 +31,10 @@ typedef int (*gheap_less_comparer_t)(const void *ctx, const void *a,
  */
 typedef void (*gheap_item_mover_t)(void *dst, const void *src);
 
+/*
+ * Gheap context.
+ * This context must be passed to every gheap function.
+ */
 struct gheap_ctx
 {
   size_t fanout;

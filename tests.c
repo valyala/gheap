@@ -4,7 +4,7 @@
 #include "gpriority_queue.h"
 
 #include <assert.h>
-#include <stdint.h>    /* for uintptr_t */
+#include <stdint.h>    /* for uintptr_t, SIZE_MAX */
 #include <stdio.h>     /* for printf() */
 #include <stdlib.h>    /* for srand(), rand(), malloc(), free() */
 
