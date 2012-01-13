@@ -105,8 +105,10 @@ gheap for C usage
 
 #include "gheap.h"
 
-static void less(const void *const a, const void *const b)
+static void less(const void *const ctx, const void *const a,
+    const void *const b)
 {
+  (void)ctx;
   return *(int *)a < *(int *)b;
 }
 
@@ -128,6 +130,7 @@ static const struct gheap_ctx binary_heap_ctx = {
   .page_chunks = 1,
   .item_size = sizeof(int),
   .less_comparer = &less,
+  .less_comparer_ctx = NULL,
   .item_mover = &move,
 };
 heapsort(&binary_heap_ctx, a, n);
@@ -138,6 +141,7 @@ static const struct gheap_ctx d4_heap_ctx = {
   .page_chunks = 1,
   .item_size = sizeof(int),
   .less_comparer = &less,
+  .less_comparer_ctx = NULL,
   .item_mover = &move,
 };
 heapsort(&d4_heap_ctx, a, n);
@@ -148,6 +152,7 @@ static const struct gheap_ctx paged_binary_heap_ctx = {
   .page_chunks = 512,
   .item_size = sizeof(int),
   .less_comparer = &less,
+  .less_comparer_ctx = NULL,
   .item_mover = &move,
 };
 heapsort(&paged_binary_heap_ctx, a, n);
