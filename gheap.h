@@ -37,11 +37,27 @@ typedef void (*gheap_item_mover_t)(void *dst, const void *src);
  */
 struct gheap_ctx
 {
+  /*
+   * How much children each heap item can have.
+   */
   size_t fanout;
+
+  /*
+   * A chunk is a tuple containing fanout items arranged sequentially in memory.
+   * A page is a subheap containing page_chunks chunks arranged sequentially
+   * in memory.
+   * The number of chunks in a page is an arbitrary integer greater than 0.
+   */
   size_t page_chunks;
+
+  /*
+   * The size of each item in bytes.
+   */
   size_t item_size;
+
   gheap_less_comparer_t less_comparer;
   const void *less_comparer_ctx;
+
   gheap_item_mover_t item_mover;
 };
 

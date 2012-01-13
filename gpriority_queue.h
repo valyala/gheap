@@ -20,7 +20,10 @@ typedef void (*gpriority_queue_item_deleter_t)(void *);
 struct gpriority_queue;
 
 /*
- * Creates empty priority queue.
+ * Creates an empty priority queue.
+ *
+ * The gheap context pointed by ctx must remain valid until
+ * gpriority_queue_delete() call.
  */
 static inline struct gpriority_queue *gpriority_queue_create(
     const struct gheap_ctx *ctx, gpriority_queue_item_deleter_t item_deleter);
