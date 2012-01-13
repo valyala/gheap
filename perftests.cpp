@@ -4,7 +4,7 @@
 #include "gheap.hpp"
 #include "gpriority_queue.hpp"
 
-#include <algorithm>  // for std::*_heap()
+#include <algorithm>  // for *_heap(), copy()
 #include <cstdlib>    // for rand(), srand()
 #include <ctime>      // for clock()
 #include <iostream>
@@ -52,12 +52,11 @@ struct stl_heap
   }
 };
 
-template <class RandomAccessIterator, class Heap>
-void heapsort(const RandomAccessIterator &first,
-    const RandomAccessIterator &last)
+template <class T, class Heap>
+void heapsort(T *const a, const size_t n)
 {
-  Heap::make_heap(first, last);
-  Heap::sort_heap(first, last);
+  Heap::make_heap(a, a + n);
+  Heap::sort_heap(a, a + n);
 }
 
 template <class T, class Heap>
@@ -69,9 +68,11 @@ void perftest_heapsort(T *const a, const size_t n, const size_t m)
 
   for (size_t i = 0; i < m / n; ++i) {
     init_array(a, n);
+
     double start = get_time();
-    heapsort<T *, Heap>(a, a + n);
+    heapsort<T, Heap>(a, n);
     double end = get_time();
+
     total_time += end - start;
   }
 
@@ -79,42 +80,54 @@ void perftest_heapsort(T *const a, const size_t n, const size_t m)
 }
 
 template <class T, class Heap>
-void perftest_nway_mergesort(T *const a, const size_t n, const size_t m)
+void nway_mergesort(T *const a, const size_t n, const size_t input_ranges_count)
 {
-  const size_t input_ranges_count = ((n >= 63) ? 63 : 1);
+  const size_t critical_range_size = (1 << 18) - 1;
+
+  if (n <= critical_range_size) {
+    heapsort<T, Heap>(a, n);
+    return;
+  }
+
   const size_t range_size = n / input_ranges_count;
-  assert(range_size > 0);
   const size_t last_full_range = n - n % range_size;
 
-  cout << "perftest_nway_mergesort(n=" << n << ", m=" << m << ", range_size=" <<
-      range_size << ", input_ranges_count=" << input_ranges_count << ")";
+  vector<pair<T *, T *> > input_ranges;
+  for (size_t i = 0; i < last_full_range; i += range_size) {
+    nway_mergesort<T, Heap>(a + i, range_size, input_ranges_count);
+    input_ranges.push_back(pair<T *, T *>(a + i, a + (i + range_size)));
+  }
+  if (n > last_full_range) {
+    nway_mergesort<T, Heap>(a + last_full_range, n - last_full_range,
+        input_ranges_count);
+    input_ranges.push_back(pair<T *, T *>(a + last_full_range, a + n));
+  }
+
+  T *const b = new T[n];
+  Heap::nway_merge(input_ranges.begin(), input_ranges.end(), b);
+  copy(b, b + n, a);
+  delete[] b;
+}
+
+template <class T, class Heap>
+void perftest_nway_mergesort(T *const a, const size_t n, const size_t m)
+{
+  const size_t input_ranges_count = 15;
+
+  cout << "perftest_nway_mergesort(n=" << n << ", m=" << m <<
+      ", input_ranges_count=" << input_ranges_count << ")";
 
   double total_time = 0;
 
-  T *const b = new T[n];
-  vector<pair<T *, T *> > input_ranges;
   for (size_t i = 0; i < m / n; ++i) {
     init_array(a, n);
 
-    // Split the array into chunks, sort them and then merge them.
-
-    input_ranges.clear();
     double start = get_time();
-    for (size_t i = 0; i < last_full_range; i += range_size) {
-      heapsort<T *, Heap>(a + i, a + (i + range_size));
-      input_ranges.push_back(pair<T *, T *>(a + i, a + (i + range_size)));
-    }
-    if (n > last_full_range) {
-      heapsort<T *, Heap>(a + last_full_range, a + n);
-      input_ranges.push_back(pair<T *, T *>(a + last_full_range, a + n));
-    }
-    assert(input_ranges.size() == input_ranges_count);
-
-    Heap::nway_merge(input_ranges.begin(), input_ranges.end(), b);
+    nway_mergesort<T, Heap>(a, n, input_ranges_count);
     double end = get_time();
+
     total_time += end - start;
   }
-  delete[] b;
 
   print_performance(total_time, m);
 }
@@ -126,6 +139,7 @@ void perftest_priority_queue(T *const a, const size_t n, const size_t m)
 
   init_array(a, n);
   PriorityQueue q(a, a + n);
+
   double start = get_time();
   for (size_t i = 0; i < m; ++i) {
     q.pop();
