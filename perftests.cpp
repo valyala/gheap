@@ -8,7 +8,7 @@
 #include <cstdlib>    // for rand(), srand()
 #include <ctime>      // for clock()
 #include <iostream>
-#include <memory>     // for *_temporary_buffer(), raw_storage_iterator()
+#include <memory>     // for *_temporary_buffer()
 #include <queue>      // for priority_queue
 #include <utility>    // for pair
 #include <vector>     // for vector
@@ -93,6 +93,34 @@ void move_items(T *const src, const size_t n, T *const dst)
 #endif
 }
 
+template <class T>
+class nway_output_iterator
+{
+private:
+  T *_next;
+
+public:
+  nway_output_iterator(T *const next) : _next(next) {}
+
+  nway_output_iterator &operator * () { return *this; }
+
+#ifndef GHEAP_CPP11
+  void operator = (const T &src)
+  {
+    new (_next) T(src);
+    ++_next;
+  }
+#else
+  void operator = (T &&src)
+  {
+    new (_next) T(src);
+    ++_next;
+  }
+#endif
+
+  void operator ++ () { }
+};
+
 template <class T, class Heap>
 void nway_mergesort(T *const a, const size_t n, T *const tmp_buf,
     const size_t input_ranges_count)
@@ -121,7 +149,7 @@ void nway_mergesort(T *const a, const size_t n, T *const tmp_buf,
   }
 
   Heap::nway_merge(input_ranges.begin(), input_ranges.end(),
-      raw_storage_iterator<T *, T>(tmp_buf));
+      nway_output_iterator<T>(tmp_buf));
   move_items(tmp_buf, n, a);
 }
 
