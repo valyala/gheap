@@ -150,7 +150,7 @@ static void nway_mergesort(const struct gheap_ctx *const ctx, int *const a,
     input_ctx->end = a + (i + range_size);
   }
   if (n > last_full_range) {
-    assert(last_full_range == range_size * (input_ranges_count - 1));
+    assert(last_full_range == range_size * input_ranges_count);
 
     const size_t last_range_size = n - last_full_range;
     nway_mergesort(ctx, a + last_full_range, last_range_size, tmp_buf,
