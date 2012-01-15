@@ -6,15 +6,17 @@
 #include <stdlib.h>    // for rand(), srand()
 #include <time.h>      // for clock()
 
+typedef size_t T;
+
 static int less(const void *const ctx, const void *const a, const void *const b)
 {
   (void)ctx;
-  return *((int *)a) < *((int *)b);
+  return *((T *)a) < *((T *)b);
 }
 
 static void move(void *const dst, const void *const src)
 {
-  *((int *)dst) = *((int *)src);
+  *((T *)dst) = *((T *)src);
 }
 
 static double get_time(void)
@@ -27,7 +29,7 @@ static void print_performance(const double t, const size_t m)
   printf(": %.0lf Kops/s\n", m / t / 1000);
 }
 
-static void init_array(int *const a, const size_t n)
+static void init_array(T *const a, const size_t n)
 {
   for (size_t i = 0; i < n; ++i) {
     a[i] = rand();
@@ -35,14 +37,14 @@ static void init_array(int *const a, const size_t n)
 }
 
 static void heapsort(const struct gheap_ctx *const ctx,
-    int *const a, const size_t n)
+    T *const a, const size_t n)
 {
   gheap_make_heap(ctx, a, n);
   gheap_sort_heap(ctx, a, n);
 }
 
 static void perftest_heapsort(const struct gheap_ctx *const ctx,
-    int *const a, const size_t n, const size_t m)
+    T *const a, const size_t n, const size_t m)
 {
   printf("perftest_heapsort(n=%zu, m=%zu)", n, m);
 
@@ -63,8 +65,8 @@ static void perftest_heapsort(const struct gheap_ctx *const ctx,
 
 struct nway_input_ctx
 {
-  int *next;
-  int *end;
+  T *next;
+  T *end;
 };
 
 static int nway_input_next(void *const ctx)
@@ -96,7 +98,7 @@ static const struct gheap_nway_input_vtable nway_input_vtable = {
 
 struct nway_output_ctx
 {
-  int *next;
+  T *next;
 };
 
 static void nway_output_put(void *const ctx, const void *const data)
@@ -110,15 +112,15 @@ static const struct gheap_nway_output_vtable nway_output_vtable = {
   .put = &nway_output_put,
 };
 
-static void move_items(const int *const src, const size_t n, int *const dst)
+static void move_items(const T *const src, const size_t n, T *const dst)
 {
   for (size_t i = 0; i < n; ++i) {
     dst[i] = src[i];
   }
 }
 
-static void nway_mergesort(const struct gheap_ctx *const ctx, int *const a,
-    const size_t n, int *const tmp_buf, const size_t input_ranges_count)
+static void nway_mergesort(const struct gheap_ctx *const ctx, T *const a,
+    const size_t n, T *const tmp_buf, const size_t input_ranges_count)
 {
   assert(input_ranges_count > 0);
 
@@ -177,7 +179,7 @@ static void nway_mergesort(const struct gheap_ctx *const ctx, int *const a,
 }
 
 static void perftest_nway_mergesort(const struct gheap_ctx *const ctx,
-    int *const a, const size_t n, const size_t m)
+    T *const a, const size_t n, const size_t m)
 {
   const size_t input_ranges_count = 15;
 
@@ -190,7 +192,7 @@ static void perftest_nway_mergesort(const struct gheap_ctx *const ctx,
     init_array(a, n);
 
     double start = get_time();
-    int *const tmp_buf = malloc(sizeof(tmp_buf[0]) * n);
+    T *const tmp_buf = malloc(sizeof(tmp_buf[0]) * n);
     nway_mergesort(ctx, a, n, tmp_buf, input_ranges_count);
     free(tmp_buf);
     double end = get_time();
@@ -208,7 +210,7 @@ static void delete_item(void *item)
 }
 
 static void perftest_priority_queue(const struct gheap_ctx *const ctx,
-    int *const a, const size_t n, const size_t m)
+    T *const a, const size_t n, const size_t m)
 {
   printf("perftest_priority_queue(n=%zu, m=%zu)", n, m);
 
@@ -219,7 +221,7 @@ static void perftest_priority_queue(const struct gheap_ctx *const ctx,
   double start = get_time();
   for (size_t i = 0; i < m; ++i) {
     gpriority_queue_pop(q);
-    const int tmp = rand();
+    const T tmp = rand();
     gpriority_queue_push(q, &tmp);
   }
   double end = get_time();
@@ -229,7 +231,7 @@ static void perftest_priority_queue(const struct gheap_ctx *const ctx,
   print_performance(end - start, m);
 }
 
-static void perftest(const struct gheap_ctx *const ctx, int *const a,
+static void perftest(const struct gheap_ctx *const ctx, T *const a,
     const size_t max_n)
 {
   size_t n = max_n;
@@ -245,7 +247,7 @@ static void perftest(const struct gheap_ctx *const ctx, int *const a,
 static const struct gheap_ctx ctx_v = {
   .fanout = 2,
   .page_chunks = 1,
-  .item_size = sizeof(int),
+  .item_size = sizeof(T),
   .less_comparer = &less,
   .less_comparer_ctx = NULL,
   .item_mover = &move,
@@ -259,7 +261,7 @@ int main(void)
       ctx_v.fanout, ctx_v.page_chunks, MAX_N);
 
   srand(0);
-  int *const a = malloc(MAX_N * sizeof(*a));
+  T *const a = malloc(sizeof(a[0]) * MAX_N);
 
   perftest(&ctx_v, a, MAX_N);
 
