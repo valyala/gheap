@@ -214,7 +214,7 @@ int main(void)
   T *const a = new T[MAX_N];
 
   cout << "* STL heap" << endl;
-//  perftest_stl_heap(a, MAX_N);
+  perftest_stl_heap(a, MAX_N);
 
   cout << "* gheap" << endl;
   perftest_gheap<T, gheap<FANOUT, PAGE_CHUNKS>,
