@@ -10,7 +10,7 @@
 #include <iostream>
 #include <memory>     // for *_temporary_buffer()
 #include <queue>      // for priority_queue
-#include <utility>    // for pair
+#include <utility>    // for pair, C++11 move()
 #include <vector>     // for vector
 
 using namespace std;
@@ -113,7 +113,7 @@ public:
 #else
   void operator = (T &&src)
   {
-    new (_next) T(src);
+    new (_next) T(std::move(src));
     ++_next;
   }
 #endif
