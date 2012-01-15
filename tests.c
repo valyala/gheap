@@ -284,7 +284,7 @@ struct nway_output_ctx
 static void nway_output_put(void *const ctx, const void *const data)
 {
   struct nway_output_ctx *const c = ctx;
-  *(c->next) = *(int *)data;
+  item_mover(c->next, data);
   ++(c->next);
 }
 

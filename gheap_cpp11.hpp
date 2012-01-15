@@ -540,6 +540,10 @@ public:
   // As a side effect the function shuffles input ranges between
   // [input_ranges_first ... input_ranges_last) and sets the first iterator
   // for each input range to the end of the corresponding range.
+  //
+  // Also values from input ranges may become obsolete after
+  // the funtion return, because they are moved to the result via
+  // move construction or move assignment.
   template <class RandomAccessIterator, class OutputIterator,
       class LessComparer>
   static void nway_merge(const RandomAccessIterator &input_ranges_first,
@@ -561,7 +565,7 @@ public:
     while (true) {
       input_range_iterator &input_range = first[0];
       assert(input_range.first != input_range.second);
-      *output = *(input_range.first);
+      *output = std::move(*(input_range.first));
       ++output;
       ++(input_range.first);
       if (input_range.first == input_range.second) {
@@ -586,6 +590,10 @@ public:
   // As a side effect the function shuffles input ranges between
   // [input_ranges_first ... input_ranges_last) and sets the first iterator
   // for each input range to the end of the corresponding range.
+  //
+  // Also values from input ranges may become obsolete after
+  // the function return, because they are moved to the result via
+  // move construction or move assignment.
   template <class RandomAccessIterator, class OutputIterator>
   static void nway_merge(const RandomAccessIterator &input_ranges_first,
       const RandomAccessIterator &input_ranges_last,
