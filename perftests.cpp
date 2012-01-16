@@ -2,6 +2,7 @@
 // otherwise gheap_cpp03.hpp will be tested.
 
 #include "gheap.hpp"
+#include "galgorithm.hpp"
 #include "gpriority_queue.hpp"
 
 #include <algorithm>  // for *_heap(), copy(), move()
@@ -53,17 +54,23 @@ struct stl_heap
   }
 };
 
-template <class T, class Heap>
-void heapsort(T *const a, const size_t n)
+// Dummy wrapper for STL algorithms.
+struct stl_algorithm
 {
-  Heap::make_heap(a, a + n);
-  Heap::sort_heap(a, a + n);
-}
+  template <class RandomAccessIterator>
+  static void partial_sort(const RandomAccessIterator &first,
+      const RandomAccessIterator &middle, const RandomAccessIterator &last)
+  {
+    std::partial_sort(first, middle, last);
+  }
+};
 
 template <class T, class Heap>
 void perftest_heapsort(T *const a, const size_t n, const size_t m)
 {
   cout << "perftest_heapsort(n=" << n << ", m=" << m << ")";
+
+  typedef galgorithm<Heap> algorithm;
 
   double total_time = 0;
 
@@ -71,7 +78,29 @@ void perftest_heapsort(T *const a, const size_t n, const size_t m)
     init_array(a, n);
 
     double start = get_time();
-    heapsort<T, Heap>(a, n);
+    algorithm::heapsort(a, a + n);
+    double end = get_time();
+
+    total_time += end - start;
+  }
+
+  print_performance(total_time, m);
+}
+
+template <class T, class Algorithm>
+void perftest_partial_sort(T *const a, const size_t n, const size_t m)
+{
+  const size_t k = n / 4;
+
+  cout << "perftest_partial_sort(n=" << n << ", m=" << m << ", k=" << k << ")";
+
+  double total_time = 0;
+
+  for (size_t i = 0; i < m / n; ++i) {
+    init_array(a, n);
+
+    double start = get_time();
+    Algorithm::partial_sort(a, a + k, a + n);
     double end = get_time();
 
     total_time += end - start;
@@ -127,10 +156,12 @@ void nway_mergesort(T *const a, const size_t n, T *const tmp_buf,
 {
   assert(input_ranges_count > 0);
 
+  typedef galgorithm<Heap> algorithm;
+
   const size_t critical_range_size = (1 << 18) - 1;
 
   if (n <= critical_range_size) {
-    heapsort<T, Heap>(a, n);
+    algorithm::heapsort(a, a + n);
     return;
   }
 
@@ -148,7 +179,7 @@ void nway_mergesort(T *const a, const size_t n, T *const tmp_buf,
     input_ranges.push_back(pair<T *, T *>(a + last_full_range, a + n));
   }
 
-  Heap::nway_merge(input_ranges.begin(), input_ranges.end(),
+  algorithm::nway_merge(input_ranges.begin(), input_ranges.end(),
       nway_output_iterator<T>(tmp_buf));
   move_items(tmp_buf, n, a);
 }
@@ -196,14 +227,15 @@ void perftest_priority_queue(T *const a, const size_t n, const size_t m)
   print_performance(end - start, m);
 }
 
-template <class T, class Heap, class PriorityQueue>
+template <class T, class Heap>
 void perftest_gheap(T *const a, const size_t max_n)
 {
   size_t n = max_n;
   while (n > 0) {
     perftest_heapsort<T, Heap>(a, n, max_n);
+    perftest_partial_sort<T, galgorithm<Heap> >(a, n, max_n);
     perftest_nway_mergesort<T, Heap>(a, n, max_n);
-    perftest_priority_queue<T, PriorityQueue>(a, n, max_n);
+    perftest_priority_queue<T, gpriority_queue<Heap, T> >(a, n, max_n);
 
     n >>= 1;
   }
@@ -215,9 +247,10 @@ void perftest_stl_heap(T *const a, const size_t max_n)
   size_t n = max_n;
   while (n > 0) {
     perftest_heapsort<T, stl_heap>(a, n, max_n);
+    perftest_partial_sort<T, stl_algorithm>(a, n, max_n);
 
     // stl heap doesn't provide nway_merge(),
-    // so skipping perftest_nway_mergesort().
+    // so skip perftest_nway_mergesort().
 
     perftest_priority_queue<T, priority_queue<T> >(a, n, max_n);
 
@@ -245,8 +278,8 @@ int main(void)
   perftest_stl_heap(a, MAX_N);
 
   cout << "* gheap" << endl;
-  perftest_gheap<T, gheap<FANOUT, PAGE_CHUNKS>,
-      gpriority_queue<FANOUT, PAGE_CHUNKS, T> >(a, MAX_N);
+  typedef gheap<FANOUT, PAGE_CHUNKS> heap;
+  perftest_gheap<T, heap>(a, MAX_N);
 
   delete[] a;
 }
