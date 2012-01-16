@@ -1,4 +1,7 @@
 // Priority queue on top of gheap.
+//
+// Pass -DGHEAP_CPP11 to compiler for enabling C++11 optimization,
+// otherwise C++03 optimization will be enabled.
 
 #include "gheap.hpp"
 
@@ -12,8 +15,7 @@
 #  include <algorithm>  // for std::swap()
 #endif
 
-template <size_t Fanout, size_t PageChunks,
-    class T, class Container = std::vector<T>,
+template <class Heap, class T, class Container = std::vector<T>,
     class LessComparer = std::less<typename Container::value_type> >
 struct gpriority_queue
 {
@@ -30,21 +32,19 @@ public:
 
 private:
 
-  typedef gheap<Fanout, PageChunks> _heap;
-
   void _make_heap()
   {
-    _heap::make_heap(c.begin(), c.end(), comp);
+    Heap::make_heap(c.begin(), c.end(), comp);
   }
 
   void _push_heap()
   {
-    _heap::push_heap(c.begin(), c.end(), comp);
+    Heap::push_heap(c.begin(), c.end(), comp);
   }
 
   void _pop_heap()
   {
-    _heap::pop_heap(c.begin(), c.end(), comp);
+    Heap::pop_heap(c.begin(), c.end(), comp);
   }
 
 public:
@@ -116,11 +116,10 @@ public:
 
 namespace std
 {
-  template <size_t Fanout, size_t PageChunks, class T, class Container,
-      class LessComparer>
+  template <class Heap, class T, class Container, class LessComparer>
   void swap(
-      gpriority_queue<Fanout, PageChunks, T, Container, LessComparer> &a,
-      gpriority_queue<Fanout, PageChunks, T, Container, LessComparer> &b)
+      gpriority_queue<Heap, T, Container, LessComparer> &a,
+      gpriority_queue<Heap, T, Container, LessComparer> &b)
   {
     a.swap(b);
   }

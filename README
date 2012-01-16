@@ -48,7 +48,6 @@ The implementation provides the following functions:
   * restore_heap_after_item_decrease() - restores max heap invariant after
     the item's value decrease.
   * remove_from_heap() - removes the given item from the heap.
-  * nway_merge() - performs N-way merge on top of the heap.
 
 * STL-like functions:
   * is_heap_until() - returns an iterator to the first non-heap item
@@ -59,6 +58,10 @@ The implementation provides the following functions:
   * pop_heap() - pops up the maximum element from the heap.
   * sort_heap() - sorts heap items in ascending order.
 
+Algorithms:
+  * heapsort() - performs heapsort.
+  * partial_sort() - performs partial sort.
+  * nway_merge() - performs N-way merge on top of the heap.
 
 The implementation is inspired by http://queue.acm.org/detail.cfm?id=1814327 ,
 but it is more generalized. The implementation is optimized for speed.
@@ -68,8 +71,10 @@ There are the following files:
 * gheap.hpp - switch file, which includes either gheap_cpp03.hpp
   or gheap_cpp11.hpp depending on whether GHEAP_CPP11 macro is defined.
 * gheap.h - gheap optimized for C99.
+* galgorithm.hpp - various algorithms on top of gheap for C++.
+* galgorithm.h - various algorithms on top of gheap for C99.
 * gpriority_queue.hpp - priority queue on top of gheap for C++.
-* gpriority_queue.h - priority queue on top of gheap for C.
+* gpriority_queue.h - priority queue on top of gheap for C99.
 
 Don't forget passing -DNDEBUG option to the compiler when creating optimized
 builds. This significantly speeds up gheap code by removing debug assertions.

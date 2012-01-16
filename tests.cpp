@@ -1,11 +1,13 @@
-// Tests for C++03 and C++11 gheap and gpriority_queue.
+// Tests for C++03 and C++11 gheap, galgorithm and gpriority_queue.
 //
 // Pass -DGHEAP_CPP11 to compiler for gheap_cpp11.hpp tests,
 // otherwise gheap_cpp03.hpp will be tested.
 
 #include "gheap.hpp"
+#include "galgorithm.hpp"
 #include "gpriority_queue.hpp"
 
+#include <algorithm>  // for min_element()
 #include <cassert>
 #include <cstdlib>    // for srand(), rand()
 #include <deque>
@@ -69,12 +71,12 @@ void test_is_heap(const size_t n)
 }
 
 template <class IntContainer>
-void init_array(IntContainer *const a, const size_t n)
+void init_array(IntContainer &a, const size_t n)
 {
-  a->clear();
+  a.clear();
 
   for (size_t i = 0; i < n; ++i) {
-    a->push_back(rand());
+    a.push_back(rand());
   }
 }
 
@@ -111,23 +113,20 @@ template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_heapsort(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
+  typedef galgorithm<heap> algorithm;
 
   cout << "    test_heapsort(n=" << n << ") ";
 
   IntContainer a;
 
   // Verify ascending sorting with default less_comparer.
-  init_array(&a, n);
-  heap::make_heap(a.begin(), a.end());
-  assert(heap::is_heap(a.begin(), a.end()));
-  heap::sort_heap(a.begin(), a.end());
+  init_array(a, n);
+  algorithm::heapsort(a.begin(), a.end());
   assert_sorted_asc(a.begin(), a.end());
 
   // Verify descending sorting with custom less_comparer.
-  init_array(&a, n);
-  heap::make_heap(a.begin(), a.end(), less_comparer_desc);
-  assert(heap::is_heap(a.begin(), a.end(), less_comparer_desc));
-  heap::sort_heap(a.begin(), a.end(), less_comparer_desc);
+  init_array(a, n);
+  algorithm::heapsort(a.begin(), a.end(), less_comparer_desc);
   assert_sorted_desc(a.begin(), a.end());
 
   cout << "OK" << endl;
@@ -141,7 +140,7 @@ void test_push_heap(const size_t n)
   cout << "    test_push_heap(n=" << n << ") ";
 
   IntContainer a;
-  init_array(&a, n);
+  init_array(a, n);
 
   for (size_t i = 0; i < n; ++i) {
     heap::push_heap(a.begin(), a.begin() + i + 1);
@@ -159,7 +158,7 @@ void test_pop_heap(const size_t n)
   cout << "    test_pop_heap(n=" << n << ") ";
 
   IntContainer a;
-  init_array(&a, n);
+  init_array(a, n);
 
   heap::make_heap(a.begin(), a.end());
   assert(heap::is_heap(a.begin(), a.end()));
@@ -181,7 +180,7 @@ void test_restore_heap_after_item_increase(const size_t n)
   cout << "    test_restore_heap_after_item_increase(n=" << n << ") ";
 
   IntContainer a;
-  init_array(&a, n);
+  init_array(a, n);
 
   heap::make_heap(a.begin(), a.end());
   assert(heap::is_heap(a.begin(), a.end()));
@@ -211,7 +210,7 @@ void test_restore_heap_after_item_decrease(const size_t n)
   cout << "    test_restore_heap_after_item_decrease(n=" << n << ") ";
 
   IntContainer a;
-  init_array(&a, n);
+  init_array(a, n);
 
   heap::make_heap(a.begin(), a.end());
   assert(heap::is_heap(a.begin(), a.end()));
@@ -242,7 +241,7 @@ void test_remove_from_heap(const size_t n)
   cout << "    test_remove_from_heap(n=" << n << ") ";
 
   IntContainer a;
-  init_array(&a, n);
+  init_array(a, n);
 
   heap::make_heap(a.begin(), a.end());
   assert(heap::is_heap(a.begin(), a.end()));
@@ -257,18 +256,64 @@ void test_remove_from_heap(const size_t n)
   cout << "OK" << endl;
 }
 
-template <class RandomAccessIterator, class Heap>
-void heapsort(const RandomAccessIterator &first,
-    const RandomAccessIterator &last)
+template <size_t Fanout, size_t PageChunks, class IntContainer>
+void test_partial_sort(const size_t n)
 {
-  Heap::make_heap(first, last);
-  Heap::sort_heap(first, last);
+  typedef gheap<Fanout, PageChunks> heap;
+  typedef galgorithm<heap> algorithm;
+  typedef typename IntContainer::iterator iterator;
+
+  cout << "    test_partial_sort(n=" << n << ") ";
+
+  IntContainer a;
+
+  // Check 0-items partial sort.
+  init_array(a, n);
+  algorithm::partial_sort(a.begin(), a.begin(), a.end());
+
+  // Check 1-item partial sort.
+  if (n > 0) {
+    init_array(a, n);
+    algorithm::partial_sort(a.begin(), a.begin() + 1, a.end());
+    assert(min_element(a.begin(), a.end()) == a.begin());
+  }
+
+  // Check 2-items partial sort.
+  if (n > 1) {
+    init_array(a, n);
+    algorithm::partial_sort(a.begin(), a.begin() + 2, a.end());
+    assert_sorted_asc(a.begin(), a.begin() + 2);
+    assert(min_element(a.begin() + 1, a.end()) == a.begin() + 1);
+  }
+
+  // Check n-items partial sort.
+  init_array(a, n);
+  algorithm::partial_sort(a.begin(), a.end(), a.end());
+  assert_sorted_asc(a.begin(), a.end());
+
+  // Check (n-1)-items partial sort.
+  if (n > 0) {
+    init_array(a, n);
+    algorithm::partial_sort(a.begin(), a.end() - 1, a.end());
+    assert_sorted_asc(a.begin(), a.end());
+  }
+
+  // Check (n-2)-items partial sort.
+  if (n > 2) {
+    init_array(a, n);
+    algorithm::partial_sort(a.begin(), a.end() - 2, a.end());
+    assert_sorted_asc(a.begin(), a.end() - 2);
+    assert(min_element(a.end() - 3, a.end()) == a.end() - 3);
+  }
+
+  cout << "OK" << endl;
 }
 
 template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_nway_merge(const size_t n)
 {
   typedef gheap<Fanout, PageChunks> heap;
+  typedef galgorithm<heap> algorithm;
   typedef typename IntContainer::iterator iterator;
 
   cout << "    test_nway_merge(n=" << n << ") ";
@@ -277,38 +322,40 @@ void test_nway_merge(const size_t n)
   vector<pair<iterator, iterator> > input_ranges;
 
   // Check 1-way merge.
-  init_array(&a, n);
+  init_array(a, n);
   b.clear();
   input_ranges.clear();
-  heapsort<iterator, heap>(a.begin(), a.end());
+  algorithm::heapsort(a.begin(), a.end());
   input_ranges.push_back(pair<iterator, iterator>(a.begin(), a.end()));
-  heap::nway_merge(input_ranges.begin(), input_ranges.end(), back_inserter(b));
+  algorithm::nway_merge(input_ranges.begin(), input_ranges.end(),
+      back_inserter(b));
   assert_sorted_asc(b.begin(), b.end());
 
   // Check 2-way merge.
   if (n > 1) {
-    init_array(&a, n);
+    init_array(a, n);
     b.clear();
     input_ranges.clear();
     const iterator middle = a.begin() + n / 2;
-    heapsort<iterator, heap>(a.begin(), middle);
-    heapsort<iterator, heap>(middle, a.end());
+    algorithm::heapsort(a.begin(), middle);
+    algorithm::heapsort(middle, a.end());
     input_ranges.push_back(pair<iterator, iterator>(a.begin(), middle));
     input_ranges.push_back(pair<iterator, iterator>(middle, a.end()));
-    heap::nway_merge(input_ranges.begin(), input_ranges.end(),
+    algorithm::nway_merge(input_ranges.begin(), input_ranges.end(),
         back_inserter(b));
     assert_sorted_asc(b.begin(), b.end());
   }
 
   // Check n-way merge with n sorted lists each containing exactly one item.
-  init_array(&a, n);
+  init_array(a, n);
   b.clear();
   input_ranges.clear();
   for (size_t i = 0; i < n; ++i) {
     input_ranges.push_back(pair<iterator, iterator>(a.begin() + i,
         a.begin() + (i + 1)));
   }
-  heap::nway_merge(input_ranges.begin(), input_ranges.end(), back_inserter(b));
+  algorithm::nway_merge(input_ranges.begin(), input_ranges.end(),
+      back_inserter(b));
   assert_sorted_asc(b.begin(), b.end());
 
 
@@ -319,8 +366,8 @@ template <size_t Fanout, size_t PageChunks, class IntContainer>
 void test_priority_queue(const size_t n)
 {
   typedef typename IntContainer::value_type value_type;
-  typedef gpriority_queue<Fanout, PageChunks, value_type, IntContainer>
-      priority_queue;
+  typedef gheap<Fanout, PageChunks> heap;
+  typedef gpriority_queue<heap, value_type, IntContainer> priority_queue;
 
   cout << "    test_priority_queue(n=" << n << ") ";
 
@@ -331,7 +378,7 @@ void test_priority_queue(const size_t n)
 
   // Verify non-empty priority queue.
   IntContainer a;
-  init_array(&a, n);
+  init_array(a, n);
   priority_queue q(a.begin(), a.end());
   assert(!q.empty());
   assert(q.size() == n);
@@ -404,6 +451,7 @@ void test_all()
   test_func(test_restore_heap_after_item_decrease<Fanout, PageChunks,
       IntContainer>);
   test_func(test_remove_from_heap<Fanout, PageChunks, IntContainer>);
+  test_func(test_partial_sort<Fanout, PageChunks, IntContainer>);
   test_func(test_nway_merge<Fanout, PageChunks, IntContainer>);
   test_func(test_priority_queue<Fanout, PageChunks, IntContainer>);
 

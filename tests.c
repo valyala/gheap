@@ -1,6 +1,7 @@
-/* Tests for C99 gheap */
+/* Tests for C99 gheap, galgorithm and gpriority_queue */
 
 #include "gheap.h"
+#include "galgorithm.h"
 #include "gpriority_queue.h"
 
 #include <assert.h>
@@ -72,14 +73,6 @@ static void assert_sorted(const struct gheap_ctx *const ctx,
   }
 }
 
-static void heapsort(const struct gheap_ctx *const ctx,
-    int *const a, const size_t n)
-{
-  gheap_make_heap(ctx, a, n);
-  gheap_sort_heap(ctx, a, n);
-  assert_sorted(ctx, a, n);
-}
-
 static void test_heapsort(const struct gheap_ctx *const ctx,
     const size_t n, int *const a)
 {
@@ -87,7 +80,8 @@ static void test_heapsort(const struct gheap_ctx *const ctx,
 
   /* Verify ascending sorting. */
   init_array(a, n);
-  heapsort(ctx, a, n);
+  galgorithm_heapsort(ctx, a, n);
+  assert_sorted(ctx, a, n);
 
   /* Verify descending sorting. */
   const struct gheap_ctx ctx_desc = {
@@ -100,7 +94,8 @@ static void test_heapsort(const struct gheap_ctx *const ctx,
   };
 
   init_array(a, n);
-  heapsort(&ctx_desc, a, n);
+  galgorithm_heapsort(&ctx_desc, a, n);
+  assert_sorted(&ctx_desc, a, n);
 
   printf("OK\n");
 }
@@ -215,6 +210,65 @@ static void test_remove_from_heap(const struct gheap_ctx *const ctx,
   printf("OK\n");
 }
 
+static const int *min_element(const int *const a, const size_t n)
+{
+  assert(n > 0);
+  const int *min_ptr = a;
+  for (size_t i = 1; i < n; ++i) {
+    if (a[i] < *min_ptr) {
+      min_ptr = a + i;
+    }
+  }
+  return min_ptr;
+}
+
+static void test_partial_sort(const struct gheap_ctx *const ctx,
+    const size_t n, int *const a)
+{
+  printf("    test_partial_sort(n=%zu) ", n);
+
+  // Check 0-items partial sort.
+  init_array(a, n);
+  galgorithm_partial_sort(ctx, a, n, 0);
+
+  // Check 1-item partial sort.
+  if (n > 0) {
+    init_array(a, n);
+    galgorithm_partial_sort(ctx, a, n, 1);
+    assert(min_element(a, n) == a);
+  }
+
+  // Check 2-items partial sort.
+  if (n > 1) {
+    init_array(a, n);
+    galgorithm_partial_sort(ctx, a, n, 2);
+    assert_sorted(ctx, a, 2);
+    assert(min_element(a + 1, n - 1) == a + 1);
+  }
+
+  // Check n-items partial sort.
+  init_array(a, n);
+  galgorithm_partial_sort(ctx, a, n, n);
+  assert_sorted(ctx, a, n);
+
+  // Check (n-1)-items partial sort.
+  if (n > 0) {
+    init_array(a, n);
+    galgorithm_partial_sort(ctx, a, n, n - 1);
+    assert_sorted(ctx, a, n);
+  }
+
+  // Check (n-2)-items partial sort.
+  if (n > 2) {
+    init_array(a, n);
+    galgorithm_partial_sort(ctx, a, n, n - 2);
+    assert_sorted(ctx, a, n - 2);
+    assert(min_element(a + n - 3, 3) == a + n - 3);
+  }
+
+  printf("OK\n");
+}
+
 struct nway_input_ctx
 {
   int *next;
@@ -243,7 +297,7 @@ static void nway_ctx_mover(void *const dst, const void *const src)
   *(struct nway_input_ctx *)dst = *(struct nway_input_ctx *)src;
 }
 
-static const struct gheap_nway_input_vtable nway_input_vtable = {
+static const struct galgorithm_nway_input_vtable nway_input_vtable = {
   .next = &nway_input_next,
   .get = &nway_input_get,
 };
@@ -260,7 +314,7 @@ static void nway_output_put(void *const ctx, const void *const data)
   ++(c->next);
 }
 
-static const struct gheap_nway_output_vtable nway_output_vtable = {
+static const struct galgorithm_nway_output_vtable nway_output_vtable = {
   .put = &nway_output_put,
 };
 
@@ -271,7 +325,7 @@ static void test_nway_merge(const struct gheap_ctx *const ctx,
 
   int *const b = malloc(sizeof(*b) * n);
 
-  struct gheap_nway_input input = {
+  struct galgorithm_nway_input input = {
     .vtable = &nway_input_vtable,
     .ctxs = NULL,
     .ctxs_count = 0,
@@ -281,14 +335,14 @@ static void test_nway_merge(const struct gheap_ctx *const ctx,
 
   struct nway_output_ctx out_ctx;
 
-  const struct gheap_nway_output output = {
+  const struct galgorithm_nway_output output = {
     .vtable = &nway_output_vtable,
     .ctx = &out_ctx,
   };
 
   // Check 1-way merge.
   init_array(a, n);
-  heapsort(ctx, a, n);
+  galgorithm_heapsort(ctx, a, n);
 
   struct nway_input_ctx one_way_input_ctxs[1] = {
     {
@@ -300,14 +354,14 @@ static void test_nway_merge(const struct gheap_ctx *const ctx,
   input.ctxs = one_way_input_ctxs;
   input.ctxs_count = 1;
   out_ctx.next = b;
-  gheap_nway_merge(ctx, &input, &output);
+  galgorithm_nway_merge(ctx, &input, &output);
   assert_sorted(ctx, b, n);
 
   // Check 2-way merge.
   if (n > 1) {
     init_array(a, n);
-    heapsort(ctx, a, n / 2);
-    heapsort(ctx, a + n / 2, n - n / 2);
+    galgorithm_heapsort(ctx, a, n / 2);
+    galgorithm_heapsort(ctx, a + n / 2, n - n / 2);
 
     struct nway_input_ctx two_way_input_ctxs[2] = {
       {
@@ -323,7 +377,7 @@ static void test_nway_merge(const struct gheap_ctx *const ctx,
     input.ctxs = two_way_input_ctxs;
     input.ctxs_count = 2;
     out_ctx.next = b;
-    gheap_nway_merge(ctx, &input, &output);
+    galgorithm_nway_merge(ctx, &input, &output);
     assert_sorted(ctx, b, n);
   }
 
@@ -340,7 +394,7 @@ static void test_nway_merge(const struct gheap_ctx *const ctx,
   input.ctxs = nway_input_ctxs;
   input.ctxs_count = n;
   out_ctx.next = b;
-  gheap_nway_merge(ctx, &input, &output);
+  galgorithm_nway_merge(ctx, &input, &output);
   assert_sorted(ctx, b, n);
   free(nway_input_ctxs);
 
@@ -443,6 +497,7 @@ static void test_all(const size_t fanout, const size_t page_chunks)
   run_all(ctx, test_restore_heap_after_item_increase);
   run_all(ctx, test_restore_heap_after_item_decrease);
   run_all(ctx, test_remove_from_heap);
+  run_all(ctx, test_partial_sort);
   run_all(ctx, test_nway_merge);
   run_all(ctx, test_priority_queue);
 
