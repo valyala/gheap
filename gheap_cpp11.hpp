@@ -205,7 +205,7 @@ private:
     _sift_up(first, less_comparer, root_index, hole_index, item);
   }
 
-  // Pops the maximum item from the heap into first[item_index].
+  // Pops the maximum item from the heap into first[heap_size-1].
   template <class RandomAccessIterator, class LessComparer>
   static void _pop_max_item(const RandomAccessIterator &first,
       const LessComparer &less_comparer, const size_t heap_size)
