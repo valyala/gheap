@@ -22,8 +22,8 @@ for particular cases:
       ( http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm ).
 
 * PageChunks. The number of chunks per each heap page. Each chunk contains
-  Fanout children, so each heap page contains (PageChunks * Fanout) items.
-  Items inside heap page are organized in a sub-heap with a root item outside
+  Fanout items, so each heap page contains (PageChunks * Fanout) items.
+  Items inside heap page are organized into a sub-heap with a root item outside
   the page. Items in the page can be roots pointing to another pages.
   * PageChunks=1 corresponds to standard heap.
   * PageChunks>1 corresponds to B-heap. See http://en.wikipedia.org/wiki/B-heap.
