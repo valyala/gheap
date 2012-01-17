@@ -43,6 +43,8 @@ for particular cases:
 ===============================================================================
 The implementation provides the following functions:
 * Auxiliary functions:
+  * swap_max_item() - swaps heap's maximum item with the item outside heap
+    and restores max heap invariant.
   * restore_heap_after_item_increase() - restores max heap invariant after
     the item's value increase.
   * restore_heap_after_item_decrease() - restores max heap invariant after

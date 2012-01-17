@@ -39,18 +39,18 @@ void init_array(T *const a, const size_t n)
 // Dummy wrapper for STL heap.
 struct stl_heap
 {
-  template <class RandomAccessIterator>
+  template <class RandomAccessIterator, class LessComparer>
   static void make_heap(const RandomAccessIterator &first,
-      const RandomAccessIterator &last)
+      const RandomAccessIterator &last, const LessComparer &less_comparer)
   {
-    std::make_heap(first, last);
+    std::make_heap(first, last, less_comparer);
   }
 
-  template <class RandomAccessIterator>
+  template <class RandomAccessIterator, class LessComparer>
   static void sort_heap(const RandomAccessIterator &first,
-      const RandomAccessIterator &last)
+      const RandomAccessIterator &last, const LessComparer &less_comparer)
   {
-    std::sort_heap(first, last);
+    std::sort_heap(first, last, less_comparer);
   }
 };
 
