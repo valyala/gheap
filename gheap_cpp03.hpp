@@ -198,9 +198,14 @@ private:
       const LessComparer &less_comparer,
       const size_t heap_size, size_t item_index)
   {
-    assert(heap_size > 1);
+    assert(heap_size > 0);
     assert(item_index < heap_size);
 
+    if (heap_size == 1) {
+      return;
+    }
+
+    assert(heap_size > 1);
     const size_t root_index = item_index;
     size_t max_child_index;
 
@@ -339,7 +344,7 @@ private:
   static void _pop_max_item(const RandomAccessIterator &first,
       const LessComparer &less_comparer, const size_t heap_size)
   {
-    assert(heap_size > 1);
+    assert(heap_size > 0);
 
     std::swap(first[heap_size], first[0]);
     _sift_down(first, less_comparer, heap_size, 0);
@@ -558,11 +563,8 @@ public:
     assert(is_heap(first, last, less_comparer));
 
     const size_t heap_size = last - first;
-    if (heap_size > 2) {
+    if (heap_size > 1) {
       _pop_max_item(first, less_comparer, heap_size - 1);
-    }
-    else if (heap_size == 2) {
-      std::swap(first[0], first[1]);
     }
 
     assert(is_heap(first, last - 1, less_comparer));
@@ -587,11 +589,8 @@ public:
     assert(last >= first);
 
     const size_t heap_size = last - first;
-    for (size_t i = heap_size; i > 2; --i) {
+    for (size_t i = heap_size; i > 1; --i) {
       _pop_max_item(first, less_comparer, i - 1);
-    }
-    if (heap_size > 1) {
-      std::swap(first[0], first[1]);
     }
   }
 
@@ -619,9 +618,7 @@ public:
     const size_t heap_size = last - first;
 
     std::swap(item, first[0]);
-    if (heap_size > 1) {
-      _sift_down(first, less_comparer, heap_size, 0);
-    }
+    _sift_down(first, less_comparer, heap_size, 0);
 
     assert(is_heap(first, last, less_comparer));
   }
@@ -678,11 +675,8 @@ public:
     assert(is_heap(first, item, less_comparer));
 
     const size_t heap_size = last - first;
-
-    if (heap_size > 1) {
-      const size_t item_index = item - first;
-      _sift_down(first, less_comparer, heap_size, item_index);
-    }
+    const size_t item_index = item - first;
+    _sift_down(first, less_comparer, heap_size, item_index);
 
     assert(is_heap(first, last, less_comparer));
   }
@@ -713,19 +707,12 @@ public:
     const size_t new_heap_size = last - first - 1;
     const size_t hole_index = item - first;
     if (hole_index < new_heap_size) {
-      if (new_heap_size > 1) {
-        std::swap(first[new_heap_size], *item);
-        if (less_comparer(*item, first[new_heap_size])) {
-          _sift_down(first, less_comparer, new_heap_size, hole_index);
-        }
-        else {
-          _sift_up(first, less_comparer, 0, hole_index);
-        }
+      std::swap(first[new_heap_size], *item);
+      if (less_comparer(*item, first[new_heap_size])) {
+        _sift_down(first, less_comparer, new_heap_size, hole_index);
       }
       else {
-        assert(hole_index == 0);
-        assert(new_heap_size == 1);
-        std::swap(first[hole_index], first[new_heap_size]);
+        _sift_up(first, less_comparer, 0, hole_index);
       }
     }
 
