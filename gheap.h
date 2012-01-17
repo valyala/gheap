@@ -245,7 +245,7 @@ static inline size_t gheap_get_child_index(const struct gheap_ctx *const ctx,
 }
 
 /* Returns a pointer to base[index]. */
-static inline const void *_gheap_get_item_ptr(const struct gheap_ctx *const ctx,
+static inline void *_gheap_get_item_ptr(const struct gheap_ctx *const ctx,
     const void *const base, const size_t index)
 {
   const size_t item_size = ctx->item_size;
@@ -279,12 +279,12 @@ static inline void _gheap_sift_up(const struct gheap_ctx *const ctx,
     if (!less_comparer(less_comparer_ctx, parent, item)) {
       break;
     }
-    item_mover((void *) _gheap_get_item_ptr(ctx, base, hole_index),
+    item_mover(_gheap_get_item_ptr(ctx, base, hole_index),
         parent);
     hole_index = parent_index;
   }
 
-  item_mover((void *) _gheap_get_item_ptr(ctx, base, hole_index), item);
+  item_mover(_gheap_get_item_ptr(ctx, base, hole_index), item);
 }
 
 /*
@@ -308,7 +308,7 @@ static inline size_t _gheap_move_up_max_child(const struct gheap_ctx *const ctx,
       max_child = tmp;
     }
   }
-  item_mover((void *) _gheap_get_item_ptr(ctx, base, hole_index), max_child);
+  item_mover(_gheap_get_item_ptr(ctx, base, hole_index), max_child);
   return child_index + j;
 }
 
@@ -351,7 +351,7 @@ static inline void _gheap_sift_down(const struct gheap_ctx *const ctx,
 static inline void _gheap_pop_max_item(const struct gheap_ctx *const ctx,
     void *const base, const size_t heap_size)
 {
-  void *const hole = (void *) _gheap_get_item_ptr(ctx, base, heap_size);
+  void *const hole = _gheap_get_item_ptr(ctx, base, heap_size);
   gheap_swap_max_item(ctx, base, heap_size, hole);
 }
 
@@ -514,7 +514,7 @@ static inline void gheap_remove_from_heap(const struct gheap_ctx *const ctx,
   const size_t new_heap_size = heap_size - 1;
   if (item_index < new_heap_size) {
     char tmp[item_size];
-    void *const hole = (void *) _gheap_get_item_ptr(ctx, base, new_heap_size);
+    void *const hole = _gheap_get_item_ptr(ctx, base, new_heap_size);
     item_mover(tmp, hole);
     item_mover(hole, _gheap_get_item_ptr(ctx, base, item_index));
     if (less_comparer(less_comparer_ctx, tmp, hole)) {
