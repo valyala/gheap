@@ -101,14 +101,27 @@ static void assert_sorted(const struct gheap_ctx *const ctx,
   }
 }
 
-static void test_heapsort(const struct gheap_ctx *const ctx,
+static void test_make_heap(const struct gheap_ctx *const ctx,
     const size_t n, int *const a)
 {
-  printf("    test_heapsort(n=%zu) ", n);
+  printf("    test_make_heap(n=%zu) ", n);
+
+  init_array(a, n);
+  gheap_make_heap(ctx, a, n);
+  assert(gheap_is_heap(ctx, a, n));
+
+  printf("OK\n");
+}
+
+static void test_sort_heap(const struct gheap_ctx *const ctx,
+    const size_t n, int *const a)
+{
+  printf("    test_sort_heap(n=%zu) ", n);
 
   /* Verify ascending sorting. */
   init_array(a, n);
-  galgorithm_heapsort(ctx, a, n);
+  gheap_make_heap(ctx, a, n);
+  gheap_sort_heap(ctx, a, n);
   assert_sorted(ctx, a, n);
 
   /* Verify descending sorting. */
@@ -122,7 +135,8 @@ static void test_heapsort(const struct gheap_ctx *const ctx,
   };
 
   init_array(a, n);
-  galgorithm_heapsort(&ctx_desc, a, n);
+  gheap_make_heap(&ctx_desc, a, n);
+  gheap_sort_heap(&ctx_desc, a, n);
   assert_sorted(&ctx_desc, a, n);
 
   printf("OK\n");
@@ -151,13 +165,33 @@ static void test_pop_heap(const struct gheap_ctx *const ctx,
   init_array(a, n);
 
   gheap_make_heap(ctx, a, n);
-  assert(gheap_is_heap(ctx, a, n));
   for (size_t i = 0; i < n; ++i) {
     const int item = a[0];
     gheap_pop_heap(ctx, a, n - i);
     assert(item == a[n - i - 1]);
   }
   assert_sorted(ctx, a, n);
+
+  printf("OK\n");
+}
+
+static void test_swap_max_item(const struct gheap_ctx *const ctx,
+    const size_t n, int *const a)
+{
+  printf("    test_swap_max_item(n=%zu) ", n);
+
+  init_array(a, n);
+
+  const size_t m = n / 2;
+  if (m > 0) {
+    gheap_make_heap(ctx, a, m);
+    for (size_t i = m; i < n; ++i) {
+      const int max_item = a[0];
+      gheap_swap_max_item(ctx, a, m, &a[i]);
+      assert(max_item == a[i]);
+      assert(gheap_is_heap(ctx, a, m));
+    }
+  }
 
   printf("OK\n");
 }
@@ -171,7 +205,6 @@ static void test_restore_heap_after_item_increase(
   init_array(a, n);
 
   gheap_make_heap(ctx, a, n);
-  assert(gheap_is_heap(ctx, a, n));
   for (size_t i = 0; i < n; ++i) {
     const size_t item_index = rand() % n;
     const int old_item = a[item_index];
@@ -199,7 +232,6 @@ static void test_restore_heap_after_item_decrease(
   init_array(a, n);
 
   gheap_make_heap(ctx, a, n);
-  assert(gheap_is_heap(ctx, a, n));
   for (size_t i = 0; i < n; ++i) {
     const size_t item_index = rand() % n;
     const int old_item = a[item_index];
@@ -226,7 +258,6 @@ static void test_remove_from_heap(const struct gheap_ctx *const ctx,
   init_array(a, n);
 
   gheap_make_heap(ctx, a, n);
-  assert(gheap_is_heap(ctx, a, n));
   for (size_t i = 0; i < n; ++i) {
     const size_t item_index = rand() % (n - i);
     const int item = a[item_index];
@@ -248,6 +279,33 @@ static const int *min_element(const int *const a, const size_t n)
     }
   }
   return min_ptr;
+}
+
+static void test_heapsort(const struct gheap_ctx *const ctx,
+    const size_t n, int *const a)
+{
+  printf("    test_heapsort(n=%zu) ", n);
+
+  /* Verify ascending sorting. */
+  init_array(a, n);
+  galgorithm_heapsort(ctx, a, n);
+  assert_sorted(ctx, a, n);
+
+  /* Verify descending sorting. */
+  const struct gheap_ctx ctx_desc = {
+    .fanout = ctx->fanout,
+    .page_chunks = ctx->page_chunks,
+    .item_size = ctx->item_size,
+    .less_comparer = &less_comparer,
+    .less_comparer_ctx = (void *)1,
+    .item_mover = ctx->item_mover,
+  };
+
+  init_array(a, n);
+  galgorithm_heapsort(&ctx_desc, a, n);
+  assert_sorted(&ctx_desc, a, n);
+
+  printf("OK\n");
 }
 
 static void test_partial_sort(const struct gheap_ctx *const ctx,
@@ -526,12 +584,15 @@ static void test_all(const size_t fanout, const size_t page_chunks)
   test_parent_child(ctx, SIZE_MAX - n, n);
 
   run_all(ctx, test_is_heap);
-  run_all(ctx, test_heapsort);
+  run_all(ctx, test_make_heap);
+  run_all(ctx, test_sort_heap);
   run_all(ctx, test_push_heap);
   run_all(ctx, test_pop_heap);
+  run_all(ctx, test_swap_max_item);
   run_all(ctx, test_restore_heap_after_item_increase);
   run_all(ctx, test_restore_heap_after_item_decrease);
   run_all(ctx, test_remove_from_heap);
+  run_all(ctx, test_heapsort);
   run_all(ctx, test_partial_sort);
   run_all(ctx, test_nway_merge);
   run_all(ctx, test_priority_queue);

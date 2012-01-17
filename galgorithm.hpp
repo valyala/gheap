@@ -113,9 +113,7 @@ public:
       const size_t heap_size = last - first;
       for (size_t i = sorted_range_size; i < heap_size; ++i) {
         if (less_comparer(first[i], first[0])) {
-          std::swap(first[i], first[0]);
-          Heap::restore_heap_after_item_decrease(first, first, middle,
-              less_comparer);
+          Heap::swap_max_item(first, middle, first[i], less_comparer);
         }
       }
 
@@ -184,7 +182,7 @@ public:
         if (first == last) {
           break;
         }
-        std::swap(*first, *last);
+        std::swap(input_range, *last);
       }
       Heap::restore_heap_after_item_decrease(first, first, last, less);
     }

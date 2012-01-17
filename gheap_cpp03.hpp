@@ -32,6 +32,10 @@ class gheap
 {
 public:
 
+  static const size_t FANOUT = Fanout;
+  static const size_t PAGE_CHUNKS = PageChunks;
+  static const size_t PAGE_SIZE = Fanout * PageChunks;
+
   // Returns parent index for the given child index.
   // Child index must be greater than 0.
   // Returns 0 if the parent is root.
@@ -203,18 +207,6 @@ private:
     _sift_up(first, less_comparer, root_index, item_index);
   }
 
-  // Pops the maximum item from the heap into first[heap_size-1].
-  template <class RandomAccessIterator, class LessComparer>
-  static void _pop_max_item(const RandomAccessIterator &first,
-      const LessComparer &less_comparer, const size_t heap_size)
-  {
-      assert(heap_size > 1);
-
-      const size_t item_index = heap_size - 1;
-      _swap(first[item_index], first[0]);
-      _sift_down(first, less_comparer, item_index, 0);
-  }
-
   // Standard less comparer.
   template <class InputIterator>
   static bool _std_less_comparer(
@@ -222,6 +214,18 @@ private:
       const typename std::iterator_traits<InputIterator>::value_type &b)
   {
     return (a < b);
+  }
+
+  // Pops max item from the heap [first[0] ... first[heap_size-1]]
+  // into first[heap_size].
+  template <class RandomAccessIterator, class LessComparer>
+  static void _pop_max_item(const RandomAccessIterator &first,
+      const LessComparer &less_comparer, const size_t heap_size)
+  {
+    assert(heap_size > 0);
+
+    _swap(first[heap_size], first[0]);
+    _sift_down(first, less_comparer, heap_size, 0);
   }
 
 public:
@@ -346,7 +350,7 @@ public:
 
     const size_t heap_size = last - first;
     if (heap_size > 1) {
-      _pop_max_item(first, less_comparer, heap_size);
+      _pop_max_item(first, less_comparer, heap_size - 1);
     }
 
     assert(is_heap(first, last - 1, less_comparer));
@@ -372,7 +376,7 @@ public:
 
     const size_t heap_size = last - first;
     for (size_t i = heap_size; i > 1; --i) {
-      _pop_max_item(first, less_comparer, i);
+      _pop_max_item(first, less_comparer, i - 1);
     }
   }
 
@@ -383,6 +387,37 @@ public:
     const RandomAccessIterator &last)
   {
     sort_heap(first, last, _std_less_comparer<RandomAccessIterator>);
+  }
+
+  // Swaps the item outside the heap with the maximum item inside
+  // the heap [first ... last) and restores the heap invariant.
+  // Uses less_comparer for items' comparisons.
+  template <class RandomAccessIterator, class LessComparer>
+  static void swap_max_item(const RandomAccessIterator &first,
+      const RandomAccessIterator &last,
+      typename std::iterator_traits<RandomAccessIterator>::value_type &item,
+      const LessComparer &less_comparer)
+  {
+    assert(first < last);
+    assert(is_heap(first, last, less_comparer));
+
+    const size_t heap_size = last - first;
+
+    _swap(item, first[0]);
+    _sift_down(first, less_comparer, heap_size, 0);
+
+    assert(is_heap(first, last, less_comparer));
+  }
+
+  // Swaps the item outside the heap with the maximum item inside
+  // the heap [first ... last) and restores the heap invariant.
+  // Uses operator< for items' comparisons.
+  template <class RandomAccessIterator>
+  static void swap_max_item(const RandomAccessIterator &first,
+      const RandomAccessIterator &last,
+      typename std::iterator_traits<RandomAccessIterator>::value_type &item)
+  {
+    swap_max_item(first, last, item, _std_less_comparer<RandomAccessIterator>);
   }
 
   // Restores max heap invariant after item's value has been increased,

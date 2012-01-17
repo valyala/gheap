@@ -45,6 +45,8 @@ The implementation provides the following functions:
 * Auxiliary functions:
   * get_parent_index() - returns parent index for the given child.
   * get_child_index() - returns the first child index for the given parent.
+  * swap_max_item() - swaps heap's maximum item with the item outside heap
+    and restores max heap invariant.
   * restore_heap_after_item_increase() - restores max heap invariant after
     the item's value increase.
   * restore_heap_after_item_decrease() - restores max heap invariant after

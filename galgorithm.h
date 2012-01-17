@@ -136,7 +136,7 @@ static inline void galgorithm_nway_merge(const struct gheap_ctx *ctx,
 #include <stdint.h>     /* for uintptr_t, SIZE_MAX and UINTPTR_MAX */
 
 /* Returns a pointer to base[index]. */
-static inline const void *_galgorithm_get_item_ptr(
+static inline void *_galgorithm_get_item_ptr(
     const struct gheap_ctx *const ctx,
     const void *const base, const size_t index)
 {
@@ -158,8 +158,8 @@ static inline void _galgorithm_swap_items(const struct gheap_ctx *const ctx,
   const gheap_item_mover_t item_mover = ctx->item_mover;
 
   char tmp[item_size];
-  void *const a = (void *) _galgorithm_get_item_ptr(ctx, base, a_index);
-  void *const b = (void *) _galgorithm_get_item_ptr(ctx, base, b_index);
+  void *const a = _galgorithm_get_item_ptr(ctx, base, a_index);
+  void *const b = _galgorithm_get_item_ptr(ctx, base, b_index);
   item_mover(tmp, a);
   item_mover(a, b);
   item_mover(b, tmp);
@@ -184,10 +184,9 @@ static inline void galgorithm_partial_sort(const struct gheap_ctx *const ctx,
     const void *const less_comparer_ctx = ctx->less_comparer_ctx;
 
     for (size_t i = middle_index; i < n; ++i) {
-      if (less_comparer(less_comparer_ctx,
-          _galgorithm_get_item_ptr(ctx, base, i), base)) {
-        _galgorithm_swap_items(ctx, base, 0, i);
-        gheap_restore_heap_after_item_decrease(ctx, base, middle_index, 0);
+      void *const tmp = _galgorithm_get_item_ptr(ctx, base, i);
+      if (less_comparer(less_comparer_ctx, tmp, base)) {
+        gheap_swap_max_item(ctx, base, middle_index, tmp);
       }
     }
 

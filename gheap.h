@@ -124,6 +124,13 @@ static inline void gheap_sort_heap(const struct gheap_ctx *ctx,
     void *base, size_t heap_size);
 
 /*
+ * Swaps the item outside the heap with the maximum item inside
+ * the heap and restores heap invariant.
+ */
+static inline void gheap_swap_max_item(const struct gheap_ctx *const ctx,
+    void *const base, const size_t heap_size, void *item);
+
+/*
  * Restores max heap invariant after item's value has been increased,
  * i.e. less_comparer(old_item, new_item) != 0.
  */
@@ -337,21 +344,15 @@ static inline void _gheap_sift_down(const struct gheap_ctx *const ctx,
   _gheap_sift_up(ctx, base, root_index, hole_index, item);
 }
 
-/* Pops the maximum item from the heap into base[heap_size-1]. */
+/*
+ * Pops the maximum item from the heap [base[0] ... base[heap_size-1]]
+ * into base[heap_size].
+ */
 static inline void _gheap_pop_max_item(const struct gheap_ctx *const ctx,
     void *const base, const size_t heap_size)
 {
-  assert(heap_size > 1);
-
-  const size_t item_size = ctx->item_size;
-  const gheap_item_mover_t item_mover = ctx->item_mover;
-
-  const size_t hole_index = heap_size - 1;
-  void *const hole = (void *) _gheap_get_item_ptr(ctx, base, hole_index);
-  char tmp[item_size];
-  item_mover(tmp, hole);
-  item_mover(hole, base);
-  _gheap_sift_down(ctx, base, hole_index, 0, tmp);
+  void *const hole = (void *) _gheap_get_item_ptr(ctx, base, heap_size);
+  gheap_swap_max_item(ctx, base, heap_size, hole);
 }
 
 static inline size_t gheap_is_heap_until(const struct gheap_ctx *const ctx,
@@ -428,7 +429,7 @@ static inline void gheap_pop_heap(const struct gheap_ctx *const ctx,
   assert(gheap_is_heap(ctx, base, heap_size));
 
   if (heap_size > 1) {
-    _gheap_pop_max_item(ctx, base, heap_size);
+    _gheap_pop_max_item(ctx, base, heap_size - 1);
   }
 
   assert(gheap_is_heap(ctx, base, heap_size - 1));
@@ -438,8 +439,25 @@ static inline void gheap_sort_heap(const struct gheap_ctx *const ctx,
     void *const base, const size_t heap_size)
 {
   for (size_t i = heap_size; i > 1; --i) {
-    _gheap_pop_max_item(ctx, base, i);
+    _gheap_pop_max_item(ctx, base, i - 1);
   }
+}
+
+static inline void gheap_swap_max_item(const struct gheap_ctx *const ctx,
+    void *const base, const size_t heap_size, void *item)
+{
+  assert(heap_size > 0);
+  assert(gheap_is_heap(ctx, base, heap_size));
+
+  const size_t item_size = ctx->item_size;
+  const gheap_item_mover_t item_mover = ctx->item_mover;
+
+  char tmp[item_size];
+  item_mover(tmp, item);
+  item_mover(item, base);
+  _gheap_sift_down(ctx, base, heap_size, 0, tmp);
+
+  assert(gheap_is_heap(ctx, base, heap_size));
 }
 
 static inline void gheap_restore_heap_after_item_increase(
