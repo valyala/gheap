@@ -2,7 +2,7 @@
 #define GALGORITHM_H
 
 /*
- * Generalized heap implementation for C99.
+ * Generalized aglogithms based on gheap for C99.
  *
  * Don't forget passing -DNDEBUG option to the compiler when creating optimized
  * builds. This significantly speeds up gheap code by removing debug assertions.
