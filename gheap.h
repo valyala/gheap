@@ -194,29 +194,6 @@ static inline int _gheap_less(const struct gheap_ctx *const ctx,
       _gheap_get_item_ptr(ctx, base, b_index));
 }
 
-/* Swaps a with b */
-static inline void _gheap_swap_items_by_ptr(const struct gheap_ctx *const ctx,
-    void *const a, void *const b)
-{
-  const size_t item_size = ctx->item_size;
-  const gheap_item_mover_t item_mover = ctx->item_mover;
-
-  char tmp[item_size];
-  item_mover(tmp, a);
-  item_mover(a, b);
-  item_mover(b, tmp);
-}
-
-/* Swaps items with given indexes */
-static inline void _gheap_swap_items(const struct gheap_ctx *const ctx,
-    const void *const base, const size_t a_index, const size_t b_index)
-{
-  void *const a = _gheap_get_item_ptr(ctx, base, a_index);
-  void *const b = _gheap_get_item_ptr(ctx, base, b_index);
-
-  _gheap_swap_items_by_ptr(ctx, a, b);
-}
-
 /*
  * Sifts the item up in the given sub-heap with the given root_index
  * starting from the hole_index.
@@ -387,9 +364,15 @@ static inline void _gheap_sift_down(const struct gheap_ctx *const ctx,
     void *const base, const size_t heap_size, size_t hole_index,
     const void *const item)
 {
-  assert(heap_size > 1);
+  assert(heap_size > 0);
   assert(hole_index < heap_size);
 
+  if (heap_size == 1) {
+    _gheap_move_item(ctx, base, 0, item);
+    return;
+  }
+
+  assert(heap_size > 1);
   const size_t fanout = ctx->fanout;
   const size_t page_chunks = ctx->page_chunks;
   const size_t page_size = page_chunks * fanout;
@@ -714,15 +697,10 @@ static inline void gheap_swap_max_item(const struct gheap_ctx *const ctx,
   const size_t item_size = ctx->item_size;
   const gheap_item_mover_t item_mover = ctx->item_mover;
 
-  if (heap_size > 1) {
-    char tmp[item_size];
-    item_mover(tmp, item);
-    item_mover(item, base);
-    _gheap_sift_down(ctx, base, heap_size, 0, tmp);
-  }
-  else {
-    _gheap_swap_items_by_ptr(ctx, base, item);
-  }
+  char tmp[item_size];
+  item_mover(tmp, item);
+  item_mover(item, base);
+  _gheap_sift_down(ctx, base, heap_size, 0, tmp);
 
   assert(gheap_is_heap(ctx, base, heap_size));
 }
@@ -759,11 +737,9 @@ static inline void gheap_restore_heap_after_item_decrease(
   const size_t item_size = ctx->item_size;
   const gheap_item_mover_t item_mover = ctx->item_mover;
 
-  if (heap_size > 1) {
-    char tmp[item_size];
-    item_mover(tmp, _gheap_get_item_ptr(ctx, base, modified_item_index));
-    _gheap_sift_down(ctx, base, heap_size, modified_item_index, tmp);
-  }
+  char tmp[item_size];
+  item_mover(tmp, _gheap_get_item_ptr(ctx, base, modified_item_index));
+  _gheap_sift_down(ctx, base, heap_size, modified_item_index, tmp);
 
   assert(gheap_is_heap(ctx, base, heap_size));
 }
@@ -782,22 +758,15 @@ static inline void gheap_remove_from_heap(const struct gheap_ctx *const ctx,
 
   const size_t new_heap_size = heap_size - 1;
   if (item_index < new_heap_size) {
-    if (new_heap_size > 1) {
-      char tmp[item_size];
-      void *const hole = _gheap_get_item_ptr(ctx, base, new_heap_size);
-      item_mover(tmp, hole);
-      item_mover(hole, _gheap_get_item_ptr(ctx, base, item_index));
-      if (less_comparer(less_comparer_ctx, tmp, hole)) {
-        _gheap_sift_down(ctx, base, new_heap_size, item_index, tmp);
-      }
-      else {
-        _gheap_sift_up(ctx, base, 0, item_index, tmp);
-      }
+    char tmp[item_size];
+    void *const hole = _gheap_get_item_ptr(ctx, base, new_heap_size);
+    item_mover(tmp, hole);
+    item_mover(hole, _gheap_get_item_ptr(ctx, base, item_index));
+    if (less_comparer(less_comparer_ctx, tmp, hole)) {
+      _gheap_sift_down(ctx, base, new_heap_size, item_index, tmp);
     }
     else {
-      assert(item_index == 0);
-      assert(new_heap_size == 1);
-      _gheap_swap_items(ctx, base, 0, 1);
+      _gheap_sift_up(ctx, base, 0, item_index, tmp);
     }
   }
 
