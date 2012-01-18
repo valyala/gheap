@@ -167,7 +167,7 @@ void nway_mergesort(T *const a, const size_t n, T *const tmp_buf,
   }
 
   const size_t range_size = n / input_ranges_count;
-  const size_t last_full_range = n - n % range_size;
+  const size_t last_full_range = n - n % input_ranges_count;
 
   vector<pair<T *, T *> > input_ranges;
   for (size_t i = 0; i < last_full_range; i += range_size) {

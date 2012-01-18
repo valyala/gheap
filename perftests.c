@@ -148,7 +148,7 @@ static void nway_mergesort(const struct gheap_ctx *const ctx, T *const a,
   }
 
   const size_t range_size = n / input_ranges_count;
-  const size_t last_full_range = n - n % range_size;
+  const size_t last_full_range = n - n % input_ranges_count;
 
   struct nway_input_ctx *const nway_input_ctxs =
       malloc(sizeof(nway_input_ctxs[0]) * input_ranges_count);
