@@ -116,10 +116,11 @@ void move_items(T *const src, const size_t n, T *const dst)
   move(src, src + n, dst);
 #else
   copy(src, src + n, dst);
+#endif
+
   for (size_t i = 0; i < n; ++i) {
     src[i].~T();
   }
-#endif
 }
 
 template <class T>
