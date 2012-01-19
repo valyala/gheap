@@ -124,7 +124,7 @@ void assert_sorted_desc(const RandomAccessIterator &first,
   }
 }
 
-bool less_comparer_desc(const int a, const int b)
+bool less_comparer_desc(const int &a, const int &b)
 {
   return (b < a);
 }
@@ -425,6 +425,58 @@ void test_nway_merge(const size_t n)
   cout << "OK" << endl;
 }
 
+template <class RandomAccessIterator, class LessComparer>
+void small_range_sorter(const RandomAccessIterator &first,
+    const RandomAccessIterator &last, const LessComparer &less_comparer)
+{
+  galgorithm<gheap<2, 1> >::heapsort(first, last, less_comparer);
+}
+
+template <class Heap, class IntContainer>
+void test_nway_mergesort(const size_t n)
+{
+  typedef galgorithm<Heap> algorithm;
+  typedef typename IntContainer::iterator iterator;
+  typedef typename IntContainer::value_type value_type;
+
+  cout << "    test_nway_mergesort(n=" << n << ") ";
+
+  IntContainer a;
+
+  // Verify n-way mergesort with default settings.
+  init_array(a, n);
+  algorithm::nway_mergesort(a.begin(), a.end());
+  assert_sorted_asc(a.begin(), a.end());
+
+  // Verify n-way mergesort with custom less_comparer.
+  init_array(a, n);
+  algorithm::nway_mergesort(a.begin(), a.end(), less_comparer_desc);
+  assert_sorted_desc(a.begin(), a.end());
+
+  // Verify n-way mergesort with custom small_range_sorter.
+  init_array(a, n);
+  algorithm::nway_mergesort(a.begin(), a.end(), less_comparer_desc,
+      small_range_sorter<iterator,
+          bool (&)(const value_type&, const value_type&)>);
+  assert_sorted_desc(a.begin(), a.end());
+
+  // Verify n-way mergesort with custom small_range_size.
+  init_array(a, n);
+  algorithm::nway_mergesort(a.begin(), a.end(), less_comparer_desc,
+      small_range_sorter<iterator,
+          bool (&)(const value_type&, const value_type&)>, 1);
+  assert_sorted_desc(a.begin(), a.end());
+
+  // Verify n-way mergesort with custom subranges_count.
+  init_array(a, n);
+  algorithm::nway_mergesort(a.begin(), a.end(), less_comparer_desc,
+      small_range_sorter<iterator,
+          bool (&)(const value_type&, const value_type&)>, 2, 3);
+  assert_sorted_desc(a.begin(), a.end());
+
+  cout << "OK" << endl;
+}
+
 template <class Heap, class IntContainer>
 void test_priority_queue(const size_t n)
 {
@@ -524,6 +576,7 @@ void test_all()
   test_func(test_heapsort<heap, IntContainer>);
   test_func(test_partial_sort<heap, IntContainer>);
   test_func(test_nway_merge<heap, IntContainer>);
+  test_func(test_nway_mergesort<heap, IntContainer>);
   test_func(test_priority_queue<heap, IntContainer>);
 
   cout << "  test_all(Fanout=" << Fanout << ", PageChunks=" << PageChunks <<
