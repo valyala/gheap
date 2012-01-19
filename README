@@ -64,6 +64,7 @@ Algorithms:
   * heapsort() - performs heapsort.
   * partial_sort() - performs partial sort.
   * nway_merge() - performs N-way merge on top of the heap.
+  * nway_mergesort() - performs N-way mergesort on top of the heap.
 
 The implementation is inspired by http://queue.acm.org/detail.cfm?id=1814327 ,
 but it is more generalized. The implementation is optimized for speed.
