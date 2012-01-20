@@ -1,9 +1,7 @@
-// Priority queue on top of gheap.
+// Priority queue on top of Heap.
 //
 // Pass -DGHEAP_CPP11 to compiler for enabling C++11 optimization,
 // otherwise C++03 optimization will be enabled.
-
-#include "gheap.hpp"
 
 #include <cassert>
 #include <functional>   // for std::less
