@@ -15,7 +15,7 @@
 
 #include <cassert>     // for assert
 #include <cstddef>     // for size_t, ptrdiff_t
-#include <iterator>    // for std::iterator_traits
+#include <iterator>    // for std::iterator_traits, std::advance()
 #include <memory>      // for std::*_temporary_buffer()
 #include <utility>     // for std::move(), std::swap(), std::*pair
 
@@ -54,35 +54,6 @@ private:
 
       return _less_comparer(*(input_range_b.first), *(input_range_a.first));
     }
-  };
-
-  // Internal output iterator for nway_mergesort().
-  template <class T>
-  class _nway_output_iterator
-  {
-  private:
-    T *_next;
-
-  public:
-    _nway_output_iterator(T *const next) : _next(next) {}
-
-    _nway_output_iterator &operator * () { return *this; }
-
-  #ifdef GHEAP_CPP11
-    void operator = (T &&src)
-    {
-      new (_next) T(std::move(src));
-      ++_next;
-    }
-  #else
-    void operator = (const T &src)
-    {
-      new (_next) T(src);
-      ++_next;
-    }
-  #endif
-
-    void operator ++ () { }
   };
 
   // RAII wrapper around temporary buffer.
@@ -142,6 +113,93 @@ private:
         --hole;
       }
 #endif
+    }
+  }
+
+  // Moves items from [first ... last) to result.
+  template <class InputIterator, class OutputIterator>
+  static OutputIterator _move_items(const InputIterator &first,
+      const InputIterator &last, const OutputIterator &result)
+  {
+#ifdef GHEAP_CPP11
+    return move(first, last, result);
+#else
+    return copy(first, last, result);
+#endif
+  }
+
+  // Auxiliary function for nway_mergesort().
+  // Merges subranges inside each subrange tuple.
+  // Each subrange tuple contains subranges_count subranges, except the last
+  // tuple, which may contain less than subranges_count subranges.
+  // Each subrange contains subrange_size items, except the last subrange,
+  // which may contain less than subrange_size items.
+  template <class InputIterator, class OutputIterator, class LessComparer>
+  static void _merge_subrange_tuples(const InputIterator &first,
+      const InputIterator &last, const OutputIterator &result,
+      const LessComparer &less_comparer,
+      std::pair<InputIterator, InputIterator> *const subranges,
+      const size_t subranges_count, const size_t subrange_size)
+  {
+    assert(first <= last);
+    assert(subranges_count > 1);
+    assert(subrange_size > 0);
+
+    typedef std::pair<InputIterator, InputIterator> subrange_t;
+
+    const size_t range_size = last - first;
+    InputIterator it = first;
+    OutputIterator output = result;
+
+    // Merge full subrange tuples. Each full subrange tuple contains
+    // subranges_count full subranges. Each full subrange contains
+    // subrange_size items.
+    if (subrange_size <= range_size / subranges_count) {
+      const size_t tuple_size = subrange_size * subranges_count;
+      const InputIterator it_last = last - range_size % tuple_size;
+
+      while (it != it_last) {
+        for (size_t i = 0; i < subranges_count; ++i) {
+          const InputIterator it_first = it;
+          std::advance(it, subrange_size);
+          new (subranges + i) subrange_t(it_first, it);
+        }
+
+        output = nway_merge(subranges, subranges + subranges_count, output,
+            less_comparer);
+
+        for (size_t i = 0; i < subranges_count; ++i) {
+          subranges[i].~subrange_t();
+        }
+      }
+    }
+
+    // Merge tail subrange tuple. Tail subrange tuple contains less than
+    // subranges_count full subranges. It also may contain tail subrange
+    // with less than subrange_size items.
+    const size_t tail_tuple_size = last - it;
+    if (tail_tuple_size > 0) {
+      const size_t full_subranges_count = tail_tuple_size / subrange_size;
+      assert(full_subranges_count < subranges_count);
+      size_t tail_subranges_count = full_subranges_count;
+
+      for (size_t i = 0; i < full_subranges_count; ++i) {
+        const InputIterator it_first = it;
+        std::advance(it, subrange_size);
+        new (subranges + i) subrange_t(it_first, it);
+      }
+
+      if (it < last) {
+        new (subranges + full_subranges_count) subrange_t(it, last);
+        ++tail_subranges_count;
+      }
+
+      nway_merge(subranges, subranges + tail_subranges_count, output,
+          less_comparer);
+
+      for (size_t i = 0; i < tail_subranges_count; ++i) {
+        subranges[i].~subrange_t();
+      }
     }
   }
 
@@ -249,6 +307,12 @@ public:
   {
     assert(input_ranges_first < input_ranges_last);
 
+    if (input_ranges_last - input_ranges_first == 1) {
+      // Nothing to merge. Just move items to the result.
+      return _move_items(input_ranges_first->first, input_ranges_first->second,
+          result);
+    }
+
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         input_range_iterator;
 
@@ -339,7 +403,8 @@ public:
 
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         value_type;
-    typedef std::pair<RandomAccessIterator, RandomAccessIterator> subrange_t;
+    typedef std::pair<RandomAccessIterator, RandomAccessIterator> subrange1_t;
+    typedef std::pair<value_type *, value_type *> subrange2_t;
 
     const size_t range_size = last - first;
 
@@ -349,9 +414,9 @@ public:
     const RandomAccessIterator it_last = last - range_size % small_range_size;
     RandomAccessIterator it = first;
     while (it != it_last) {
-      const RandomAccessIterator it_next = it + small_range_size;
-      small_range_sorter(it, it_next, less_comparer);
-      it = it_next;
+      const RandomAccessIterator it_first = it;
+      it += small_range_size;
+      small_range_sorter(it_first, it, less_comparer);
     }
 
     // Sort the last subrange, which contains less than small_range_size items.
@@ -359,84 +424,51 @@ public:
       small_range_sorter(it, last, less_comparer);
     }
 
+    if (range_size <= small_range_size) {
+      // Nothing to merge. Sorting is done.
+      return;
+    }
+
     // Step 2: Merge subranges sorted at the previous step using n-way merge.
     const _temporary_buffer<value_type> tmp_buf(range_size);
     value_type *const items_tmp_buf = tmp_buf.get_ptr();
 
-    const _temporary_buffer<subrange_t> subranges_tmp_buf(subranges_count);
-    subrange_t *const subranges = subranges_tmp_buf.get_ptr();
+    const _temporary_buffer<subrange1_t> subranges_tmp_buf1(subranges_count);
+    const _temporary_buffer<subrange2_t> subranges_tmp_buf2(subranges_count);
+
+    // Preparation: Move items to a temporary buffer.
+    _move_items(first, last, items_tmp_buf);
 
     size_t subrange_size = small_range_size;
     for (;;) {
-      _nway_output_iterator<value_type> out(items_tmp_buf);
-      RandomAccessIterator it = first;
+      // First pass: merge items from the temporary buffer
+      // to the original location.
+      _merge_subrange_tuples(
+          items_tmp_buf, items_tmp_buf + range_size, first, less_comparer,
+          subranges_tmp_buf2.get_ptr(), subranges_count, subrange_size);
 
-      // Merge full subrange tuples. Each full subrange tuple contains
-      // subranges_count full subranges. Each full subrange contains
-      // subrange_size items.
-      if (subrange_size <= range_size / subranges_count) {
-        const size_t subrange_tuple_size = subrange_size * subranges_count;
-        const RandomAccessIterator it_last =
-            last - range_size % subrange_tuple_size;
-        while (it != it_last) {
-          for (size_t i = 0; i < subranges_count; ++i) {
-            const RandomAccessIterator it_next = it + subrange_size;
-            new (subranges + i) subrange_t(it, it_next);
-            it = it_next;
-          }
-
-          out = nway_merge(subranges, subranges + subranges_count, out,
-              less_comparer);
-
-          for (size_t i = 0; i < subranges_count; ++i) {
-            subranges[i].~subrange_t();
-          }
-        }
-      }
-
-      // Merge tail subrange tuple. Tail subrange tuple contains less than
-      // subranges_count full subranges. It also can contain tail subrange
-      // with less than subrange_size items.
-      if (it < last) {
-        const size_t full_subranges_count = (last - it) / subrange_size;
-        assert(full_subranges_count < subranges_count);
-        size_t tail_subranges_count = full_subranges_count;
-
-        for (size_t i = 0; i < full_subranges_count; ++i) {
-          const RandomAccessIterator it_next = it + subrange_size;
-          new (subranges + i) subrange_t(it, it_next);
-          it = it_next;
-        }
-
-        if (it < last) {
-          new (subranges + full_subranges_count) subrange_t(it, last);
-          ++tail_subranges_count;
-        }
-
-        nway_merge(subranges, subranges + tail_subranges_count, out,
-            less_comparer);
-
-        for (size_t i = 0; i < tail_subranges_count; ++i) {
-          subranges[i].~subrange_t();
-        }
-      }
-
-      // Move subranges from temporary buffer to the original location.
-#ifdef GHEAP_CPP11
-      move(items_tmp_buf, items_tmp_buf + range_size, first);
-#else
-      copy(items_tmp_buf, items_tmp_buf + range_size, first);
-#endif
-
-      for (size_t i = 0; i < range_size; ++i) {
-        items_tmp_buf[i].~value_type();
-      }
-
-      // Increase subrange size.
       if (subrange_size > range_size / subranges_count) {
         break;
       }
       subrange_size *= subranges_count;
+
+      // Second pass: merge items from the original location
+      // to the temporary buffer.
+      _merge_subrange_tuples(
+          first, last, items_tmp_buf, less_comparer,
+          subranges_tmp_buf1.get_ptr(), subranges_count, subrange_size);
+
+      if (subrange_size > range_size / subranges_count) {
+        // Move items from the temporary buffer to the original location.
+        _move_items(items_tmp_buf, items_tmp_buf + range_size, first);
+        break;
+      }
+      subrange_size *= subranges_count;
+    }
+
+    // Destroy dummy items in the temporary buffer.
+    for (size_t i = 0; i < range_size; ++i) {
+      items_tmp_buf[i].~value_type();
     }
   }
 
