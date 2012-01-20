@@ -1,13 +1,13 @@
 #ifndef GALGORITHM_H
 #define GALGORITHM_H
 
-// Generalized algorithms based on gheap.
+// Generalized algorithms based on Heap.
 //
 // Pass -DGHEAP_CPP11 to compiler for enabling C++11 optimization,
 // otherwise C++03 optimization will be enabled.
 //
 // Don't forget passing -DNDEBUG option to the compiler when creating optimized
-// builds. This significantly speeds up gheap code by removing debug assertions.
+// builds. This significantly speeds up the code by removing debug assertions.
 //
 // Author: Aliaksandr Valialkin <valyala@gmail.com>.
 
@@ -19,7 +19,7 @@
 #include <memory>      // for std::*_temporary_buffer()
 #include <utility>     // for std::move(), std::swap(), std::*pair
 
-template <class Heap = gheap<2, 1> >
+template <class Heap = gheap<> >
 class galgorithm
 {
 private:
