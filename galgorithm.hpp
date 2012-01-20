@@ -307,12 +307,6 @@ public:
   {
     assert(input_ranges_first < input_ranges_last);
 
-    if (input_ranges_last - input_ranges_first == 1) {
-      // Nothing to merge. Just move items to the result.
-      return _move_items(input_ranges_first->first, input_ranges_first->second,
-          result);
-    }
-
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         input_range_iterator;
 
