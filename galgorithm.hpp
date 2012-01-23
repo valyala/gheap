@@ -17,6 +17,7 @@
 #include <cstddef>     // for size_t, ptrdiff_t
 #include <iterator>    // for std::iterator_traits, std::advance()
 #include <memory>      // for std::*_temporary_buffer()
+#include <new>         // for std::bad_alloc
 #include <utility>     // for std::move(), std::swap(), std::*pair
 
 template <class Heap = gheap<> >
@@ -70,6 +71,9 @@ private:
       const std::pair<T *, ptrdiff_t> tmp_buf =
           std::get_temporary_buffer<T>(size);
       _ptr = tmp_buf.first;
+      if (_ptr == 0) {
+        throw std::bad_alloc();
+      }
     }
 
     ~_temporary_buffer()
