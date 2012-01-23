@@ -435,7 +435,13 @@ public:
     const _temporary_buffer<subrange2_t> subranges_tmp_buf2(subranges_count);
 
     // Preparation: Move items to a temporary buffer.
-    _move_items(first, last, items_tmp_buf);
+    for (size_t i = 0; i < range_size; ++i) {
+#ifdef GHEAP_CPP11
+      new (items_tmp_buf + i) value_type(std::move(first[i]));
+#else
+      new (items_tmp_buf + i) value_type(first[i]);
+#endif
+    }
 
     size_t subrange_size = small_range_size;
     for (;;) {
