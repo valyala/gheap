@@ -89,35 +89,57 @@ private:
   };
 
   // Standard sorter for small ranges.
-  template <class RandomAccessIterator, class LessComparer>
-  static void _std_small_range_sorter(const RandomAccessIterator &first,
-      const RandomAccessIterator &last, const LessComparer &less_comparer)
+  template <class T, class LessComparer>
+  static void _std_small_range_sorter(T *const first, T *const last,
+      const LessComparer &less_comparer)
   {
     assert(first <= last);
 
     // Insertion sort implementation.
     // See http://en.wikipedia.org/wiki/Insertion_sort .
 
-    typedef typename std::iterator_traits<RandomAccessIterator>::value_type
-        value_type;
-
-    for (RandomAccessIterator it = first + 1; it != last; ++it) {
+    for (T *it = first + 1; it != last; ++it) {
 #ifdef GHEAP_CPP11
-      value_type tmp = std::move(*it);
-      RandomAccessIterator hole = it;
+      T tmp = std::move(*it);
+      T *hole = it;
       while (hole != first && less_comparer(tmp, *(hole - 1))) {
         *hole = std::move(*(hole - 1));
         --hole;
       }
       *hole = std::move(tmp);
 #else
-      RandomAccessIterator hole = it;
+      T *hole = it;
       while (hole != first && less_comparer(*hole, *(hole - 1))) {
         std::swap(*hole, *(hole - 1));
         --hole;
       }
 #endif
     }
+  }
+
+  // Moves items from [first ... last) to uninitialized memory pointed
+  // by result.
+  template <class InputIterator, class ForwardIterator>
+  static ForwardIterator _uninitialized_move_items(const InputIterator &first,
+      const InputIterator &last, const ForwardIterator &result)
+  {
+#ifdef GHEAP_CPP11
+    // libstdc++ is missing std::uninitialized_move(), so implement it here.
+    // See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51981 .
+    typedef typename std::iterator_traits<ForwardIterator>::value_type
+        value_type;
+
+    InputIterator input = first;
+    ForwardIterator output = result;
+    while (input != last) {
+      new (&*output) value_type(std::move(*input));
+      ++output;
+      ++input;
+    }
+    return output;
+#else
+    return std::uninitialized_copy(first, last, result);
+#endif
   }
 
   // Moves items from [first ... last) to result.
@@ -130,6 +152,37 @@ private:
 #else
     return std::copy(first, last, result);
 #endif
+  }
+
+  // Auxiliary function for nway_mergesort().
+  // Splits the range [first ... last) into subranges with small_range_size size
+  // each (except the last subrange, which may contain less
+  // than small_range_size items) and sort each of these subranges using
+  // small_range_sorter.
+  template <class RandomAccessIterator, class LessComparer,
+      class SmallRangeSorter>
+  static void _sort_subranges(const RandomAccessIterator &first,
+      const RandomAccessIterator &last, const LessComparer &less_comparer,
+      const SmallRangeSorter &small_range_sorter,
+      const size_t small_range_size)
+  {
+    assert(first <= last);
+    assert(small_range_size > 0);
+
+    const size_t range_size = last - first;
+
+    const RandomAccessIterator it_last = last - range_size % small_range_size;
+    RandomAccessIterator it = first;
+    while (it != it_last) {
+      const RandomAccessIterator it_first = it;
+      it += small_range_size;
+      small_range_sorter(it_first, it, less_comparer);
+    }
+
+    // Sort the last subrange, which contains less than small_range_size items.
+    if (it < last) {
+      small_range_sorter(it, last, less_comparer);
+    }
   }
 
   // Auxiliary function for nway_mergesort().
@@ -388,62 +441,40 @@ public:
   // Splits the input range into subranges with small_range_size size,
   // sorts them using small_range_sorter and then merges them back
   // using n-way merge with n = subranges_count.
-  template <class RandomAccessIterator, class LessComparer,
-      class SmallRangeSorter>
-  static void nway_mergesort(const RandomAccessIterator &first,
-      const RandomAccessIterator &last, const LessComparer &less_comparer,
+  //
+  // items_tmp_buf must point to an uninitialized memory, which can hold
+  // up to (last - first) items.
+  template <class ForwardIterator, class LessComparer, class SmallRangeSorter>
+  static void nway_mergesort(const ForwardIterator &first,
+      const ForwardIterator &last, const LessComparer &less_comparer,
       const SmallRangeSorter &small_range_sorter,
-      const size_t small_range_size = 32, const size_t subranges_count = 15)
+      const size_t small_range_size, const size_t subranges_count,
+      typename std::iterator_traits<ForwardIterator>::value_type
+          *const items_tmp_buf)
   {
     assert(first <= last);
     assert(small_range_size > 0);
     assert(subranges_count > 1);
 
-    typedef typename std::iterator_traits<RandomAccessIterator>::value_type
+    typedef typename std::iterator_traits<ForwardIterator>::value_type
         value_type;
-    typedef std::pair<RandomAccessIterator, RandomAccessIterator> subrange1_t;
+    typedef std::pair<ForwardIterator, ForwardIterator> subrange1_t;
     typedef std::pair<value_type *, value_type *> subrange2_t;
 
     const size_t range_size = last - first;
 
+    // Preparation: Move items to a temporary buffer.
+    _uninitialized_move_items(first, last, items_tmp_buf);
+
     // Step 1: split the range into subranges with small_range_size size each
     // (except the last subrange, which may contain less than small_range_size
     // items) and sort each of these subranges using small_range_sorter.
-    const RandomAccessIterator it_last = last - range_size % small_range_size;
-    RandomAccessIterator it = first;
-    while (it != it_last) {
-      const RandomAccessIterator it_first = it;
-      it += small_range_size;
-      small_range_sorter(it_first, it, less_comparer);
-    }
-
-    // Sort the last subrange, which contains less than small_range_size items.
-    if (it < last) {
-      small_range_sorter(it, last, less_comparer);
-    }
-
-    if (range_size <= small_range_size) {
-      // Nothing to merge. Sorting is done.
-      return;
-    }
+    _sort_subranges(items_tmp_buf, items_tmp_buf + range_size,
+        less_comparer, small_range_sorter, small_range_size);
 
     // Step 2: Merge subranges sorted at the previous step using n-way merge.
-    const _temporary_buffer<value_type> tmp_buf(range_size);
-    value_type *const items_tmp_buf = tmp_buf.get_ptr();
-
     const _temporary_buffer<subrange1_t> subranges_tmp_buf1(subranges_count);
     const _temporary_buffer<subrange2_t> subranges_tmp_buf2(subranges_count);
-
-    // Preparation: Move items to a temporary buffer.
-#ifdef GHEAP_CPP11
-    // libstdc++ is missing std::uninitialized_move(), so implement it here.
-    // See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51981 .
-    for (size_t i = 0; i < range_size; ++i) {
-      new (items_tmp_buf + i) value_type(std::move(first[i]));
-    }
-#else
-    std::uninitialized_copy(first, last, items_tmp_buf);
-#endif
 
     size_t subrange_size = small_range_size;
     for (;;) {
@@ -478,29 +509,68 @@ public:
     }
   }
 
+  // Performs n-way mergesort.
+  //
+  // Uses:
+  // - less_comparer for items' comparison.
+  // - small_range_sorter for sorting ranges containing no more
+  //   than small_range_size items.
+  //
+  // Splits the input range into subranges with small_range_size size,
+  // sorts them using small_range_sorter and then merges them back
+  // using n-way merge with n = subranges_count.
+  //
+  // May raise std::bad_alloc on unsuccessful attempt to allocate a temporary
+  // buffer for (last - first) items.
+  template <class ForwardIterator, class LessComparer, class SmallRangeSorter>
+  static void nway_mergesort(const ForwardIterator &first,
+      const ForwardIterator &last, const LessComparer &less_comparer,
+      const SmallRangeSorter &small_range_sorter,
+      const size_t small_range_size = 32, const size_t subranges_count = 15)
+  {
+    assert(first <= last);
+
+    typedef typename std::iterator_traits<ForwardIterator>::value_type
+        value_type;
+
+    const size_t range_size = last - first;
+
+    const _temporary_buffer<value_type> tmp_buf(range_size);
+    value_type *const items_tmp_buf = tmp_buf.get_ptr();
+
+    nway_mergesort(first, last, less_comparer, small_range_sorter,
+        small_range_size, subranges_count, items_tmp_buf);
+  }
+
   // Performs 2-way mergesort.
   //
   // Uses less_comparer for items' comparison.
-  template <class RandomAccessIterator, class LessComparer>
-  static void nway_mergesort(const RandomAccessIterator &first,
-      const RandomAccessIterator &last, const LessComparer &less_comparer)
+  //
+  // May raise std::bad_alloc on unsuccessful attempt to allocate a temporary
+  // buffer for (last - first) items.
+  template <class ForwardIterator, class LessComparer>
+  static void nway_mergesort(const ForwardIterator &first,
+      const ForwardIterator &last, const LessComparer &less_comparer)
   {
-    typedef typename std::iterator_traits<RandomAccessIterator>::value_type
+    typedef typename std::iterator_traits<ForwardIterator>::value_type
         value_type;
 
     nway_mergesort(first, last, less_comparer,
-        _std_small_range_sorter<RandomAccessIterator,
+        _std_small_range_sorter<value_type,
             bool (&)(const value_type&, const value_type&)>);
   }
 
   // Performs 2-way mergesort.
   //
   // Uses operator< for items' comparison.
-  template <class RandomAccessIterator>
-  static void nway_mergesort(const RandomAccessIterator &first,
-      const RandomAccessIterator &last)
+  //
+  // May raise std::bad_alloc on unsuccessful attempt to allocate a temporary
+  // buffer for (last - first) items.
+  template <class ForwardIterator>
+  static void nway_mergesort(const ForwardIterator &first,
+      const ForwardIterator &last)
   {
-    nway_mergesort(first, last, _std_less_comparer<RandomAccessIterator>);
+    nway_mergesort(first, last, _std_less_comparer<ForwardIterator>);
   }
 };
 #endif
