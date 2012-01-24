@@ -435,13 +435,15 @@ public:
     const _temporary_buffer<subrange2_t> subranges_tmp_buf2(subranges_count);
 
     // Preparation: Move items to a temporary buffer.
-    for (size_t i = 0; i < range_size; ++i) {
 #ifdef GHEAP_CPP11
+    // libstdc++ is missing std::uninitialized_move(), so implement it here.
+    // See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51981 .
+    for (size_t i = 0; i < range_size; ++i) {
       new (items_tmp_buf + i) value_type(std::move(first[i]));
-#else
-      new (items_tmp_buf + i) value_type(first[i]);
-#endif
     }
+#else
+    std::uninitialized_copy(first, last, items_tmp_buf);
+#endif
 
     size_t subrange_size = small_range_size;
     for (;;) {
