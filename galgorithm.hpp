@@ -126,9 +126,9 @@ private:
       const InputIterator &last, const OutputIterator &result)
   {
 #ifdef GHEAP_CPP11
-    return move(first, last, result);
+    return std::move(first, last, result);
 #else
-    return copy(first, last, result);
+    return std::copy(first, last, result);
 #endif
   }
 
