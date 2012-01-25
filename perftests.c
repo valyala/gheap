@@ -1,5 +1,5 @@
-#include "gheap.h"
 #include "galgorithm.h"
+#include "gheap.h"
 #include "gpriority_queue.h"
 
 #include <assert.h>
@@ -47,9 +47,9 @@ static void perftest_heapsort(const struct gheap_ctx *const ctx,
   for (size_t i = 0; i < m / n; ++i) {
     init_array(a, n);
 
-    double start = get_time();
+    const double start = get_time();
     galgorithm_heapsort(ctx, a, n);
-    double end = get_time();
+    const double end = get_time();
 
     total_time += end - start;
   }
@@ -69,9 +69,9 @@ static void perftest_partial_sort(const struct gheap_ctx *const ctx,
   for (size_t i = 0; i < m / n; ++i) {
     init_array(a, n);
 
-    double start = get_time();
+    const double start = get_time();
     galgorithm_partial_sort(ctx, a, n, k);
-    double end = get_time();
+    const double end = get_time();
 
     total_time += end - start;
   }
@@ -79,139 +79,36 @@ static void perftest_partial_sort(const struct gheap_ctx *const ctx,
   print_performance(total_time, m);
 }
 
-struct nway_input_ctx
+static void small_range_sorter(const void *const ctx, void *const a,
+    const size_t n)
 {
-  T *next;
-  T *end;
-};
-
-static int nway_input_next(void *const ctx)
-{
-  struct nway_input_ctx *const c = ctx;
-  assert(c->next <= c->end);
-  if (c->next < c->end) {
-    ++(c->next);
-  }
-  return (c->next < c->end);
-}
-
-static const void *nway_input_get(const void *const ctx)
-{
-  const struct nway_input_ctx *const c = ctx;
-  assert(c->next < c->end);
-  return c->next;
-}
-
-static void nway_ctx_mover(void *const dst, const void *const src)
-{
-  *(struct nway_input_ctx *)dst = *(struct nway_input_ctx *)src;
-}
-
-static const struct galgorithm_nway_input_vtable nway_input_vtable = {
-  .next = &nway_input_next,
-  .get = &nway_input_get,
-};
-
-struct nway_output_ctx
-{
-  T *next;
-};
-
-static void nway_output_put(void *const ctx, const void *const data)
-{
-  struct nway_output_ctx *const c = ctx;
-  move(c->next, data);
-  ++(c->next);
-}
-
-static const struct galgorithm_nway_output_vtable nway_output_vtable = {
-  .put = &nway_output_put,
-};
-
-static void move_items(const T *const src, const size_t n, T *const dst)
-{
-  for (size_t i = 0; i < n; ++i) {
-    dst[i] = src[i];
-  }
-}
-
-static void nway_mergesort(const struct gheap_ctx *const ctx, T *const a,
-    const size_t n, T *const tmp_buf, const size_t input_ranges_count)
-{
-  assert(input_ranges_count > 0);
-
-  const size_t critical_range_size = (1 << 18) - 1;
-
-  if (n <= critical_range_size) {
-    galgorithm_heapsort(ctx, a, n);
-    return;
-  }
-
-  const size_t range_size = n / input_ranges_count;
-  const size_t last_full_range = n - n % input_ranges_count;
-
-  struct nway_input_ctx *const nway_input_ctxs =
-      malloc(sizeof(nway_input_ctxs[0]) * input_ranges_count);
-
-  const struct galgorithm_nway_input input = {
-    .vtable = &nway_input_vtable,
-    .ctxs = nway_input_ctxs,
-    .ctxs_count = input_ranges_count,
-    .ctx_size = sizeof(struct nway_input_ctx),
-    .ctx_mover = &nway_ctx_mover,
-  };
-
-  for (size_t i = 0; i < last_full_range; i += range_size) {
-    nway_mergesort(ctx, a + i, range_size, tmp_buf, input_ranges_count);
-    struct nway_input_ctx *const input_ctx = &nway_input_ctxs[i / range_size];
-    input_ctx->next = a + i;
-    input_ctx->end = a + (i + range_size);
-  }
-  if (n > last_full_range) {
-    assert(last_full_range == range_size * input_ranges_count);
-
-    const size_t last_range_size = n - last_full_range;
-    nway_mergesort(ctx, a + last_full_range, last_range_size, tmp_buf,
-        input_ranges_count);
-    struct nway_input_ctx *const input_ctx = &nway_input_ctxs[
-        input_ranges_count - 1];
-    input_ctx->next = a + last_full_range;
-    input_ctx->end = a + n;
-  }
-
-  struct nway_output_ctx output_ctx = {
-    .next = tmp_buf,
-  };
-
-  const struct galgorithm_nway_output output = {
-    .vtable = &nway_output_vtable,
-    .ctx = &output_ctx,
-  };
-
-  galgorithm_nway_merge(ctx, &input, &output);
-  move_items(tmp_buf, n, a);
-
-  free(nway_input_ctxs);
+  galgorithm_heapsort(ctx, a, n);
 }
 
 static void perftest_nway_mergesort(const struct gheap_ctx *const ctx,
     T *const a, const size_t n, const size_t m)
 {
-  const size_t input_ranges_count = 15;
+  const size_t small_range_size = ((1 << 20) - 1) / 3;
+  const size_t subranges_count = 15;
 
-  printf("perftest_nway_mergesort(n=%zu, m=%zu, input_ranges_count=%zu)",
-      n, m, input_ranges_count);
+  printf("perftest_nway_mergesort(n=%zu, m=%zu, small_range_size=%zu, "
+      "subranges_count=%zu)", n, m, small_range_size, subranges_count);
 
   double total_time = 0;
+
+  struct gheap_ctx small_range_sorter_ctx = *ctx;
+  small_range_sorter_ctx.fanout = 4;
 
   for (size_t i = 0; i < m / n; ++i) {
     init_array(a, n);
 
-    double start = get_time();
-    T *const tmp_buf = malloc(sizeof(tmp_buf[0]) * n);
-    nway_mergesort(ctx, a, n, tmp_buf, input_ranges_count);
-    free(tmp_buf);
-    double end = get_time();
+    const double start = get_time();
+    T *const items_tmp_buf = malloc(sizeof(items_tmp_buf[0]) * n);
+    galgorithm_nway_mergesort(ctx, a, n,
+        &small_range_sorter, &small_range_sorter_ctx,
+        small_range_size, subranges_count, items_tmp_buf);
+    free(items_tmp_buf);
+    const double end = get_time();
 
     total_time += end - start;
   }

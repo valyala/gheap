@@ -1,8 +1,8 @@
 // Pass -DGHEAP_CPP11 to compiler for gheap_cpp11.hpp tests,
 // otherwise gheap_cpp03.hpp will be tested.
 
-#include "gheap.hpp"
 #include "galgorithm.hpp"
+#include "gheap.hpp"
 #include "gpriority_queue.hpp"
 
 #include <algorithm>  // for *_heap(), copy()
@@ -76,9 +76,9 @@ void perftest_heapsort(T *const a, const size_t n, const size_t m)
   for (size_t i = 0; i < m / n; ++i) {
     init_array(a, n);
 
-    double start = get_time();
+    const double start = get_time();
     algorithm::heapsort(a, a + n);
-    double end = get_time();
+    const double end = get_time();
 
     total_time += end - start;
   }
@@ -98,9 +98,9 @@ void perftest_partial_sort(T *const a, const size_t n, const size_t m)
   for (size_t i = 0; i < m / n; ++i) {
     init_array(a, n);
 
-    double start = get_time();
+    const double start = get_time();
     Algorithm::partial_sort(a, a + k, a + n);
-    double end = get_time();
+    const double end = get_time();
 
     total_time += end - start;
   }
@@ -115,7 +115,7 @@ bool less_comparer(const T &a, const T &b)
 }
 
 template <class T, class LessComparer>
-void small_sorter(T *const first, T *const last,
+void small_range_sorter(T *const first, T *const last,
     const LessComparer &less_comparer)
 {
   galgorithm<gheap<2, 1> >::heapsort(first, last, less_comparer);
@@ -138,11 +138,11 @@ void perftest_nway_mergesort(T *const a, const size_t n, const size_t m)
   for (size_t i = 0; i < m / n; ++i) {
     init_array(a, n);
 
-    double start = get_time();
+    const double start = get_time();
     algorithm::nway_mergesort(a, a + n,
-        less_comparer<T>, small_sorter<T, bool (&)(const T &, const T &)>,
+        less_comparer<T>, small_range_sorter<T, bool (&)(const T &, const T &)>,
         small_range_size, subranges_count);
-    double end = get_time();
+    const double end = get_time();
 
     total_time += end - start;
   }
@@ -158,12 +158,12 @@ void perftest_priority_queue(T *const a, const size_t n, const size_t m)
   init_array(a, n);
   PriorityQueue q(a, a + n);
 
-  double start = get_time();
+  const double start = get_time();
   for (size_t i = 0; i < m; ++i) {
     q.pop();
     q.push(rand());
   }
-  double end = get_time();
+  const double end = get_time();
 
   print_performance(end - start, m);
 }

@@ -3,8 +3,8 @@
 // Pass -DGHEAP_CPP11 to compiler for gheap_cpp11.hpp tests,
 // otherwise gheap_cpp03.hpp will be tested.
 
-#include "gheap.hpp"
 #include "galgorithm.hpp"
+#include "gheap.hpp"
 #include "gpriority_queue.hpp"
 
 #include <algorithm>  // for min_element()
