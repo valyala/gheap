@@ -194,17 +194,17 @@ static inline void galgorithm_partial_sort(const struct gheap_ctx *const ctx,
   }
 }
 
-struct _galgorithm_nway_less_comparer_ctx
+struct _galgorithm_nway_merge_less_comparer_ctx
 {
   gheap_less_comparer_t less_comparer;
   const void *less_comparer_ctx;
   const struct galgorithm_nway_input_vtable *vtable;
 };
 
-int _galgorithm_nway_less_comparer(const void *const ctx,
+int _galgorithm_nway_merge_less_comparer(const void *const ctx,
     const void *const a, const void *const b)
 {
-  const struct _galgorithm_nway_less_comparer_ctx *const c = ctx;
+  const struct _galgorithm_nway_merge_less_comparer_ctx *const c = ctx;
   const gheap_less_comparer_t less_comparer = c->less_comparer;
   const void *const less_comparer_ctx = c->less_comparer_ctx;
   const struct galgorithm_nway_input_vtable *const vtable = c->vtable;
@@ -221,7 +221,7 @@ static inline void galgorithm_nway_merge(const struct gheap_ctx *const ctx,
 
   assert(inputs_count > 0);
 
-  const struct _galgorithm_nway_less_comparer_ctx less_comparer_ctx = {
+  const struct _galgorithm_nway_merge_less_comparer_ctx less_comparer_ctx = {
     .less_comparer = ctx->less_comparer,
     .less_comparer_ctx = ctx->less_comparer_ctx,
     .vtable = input->vtable,
@@ -230,7 +230,7 @@ static inline void galgorithm_nway_merge(const struct gheap_ctx *const ctx,
     .fanout = ctx->fanout,
     .page_chunks = ctx->page_chunks,
     .item_size = input->ctx_size,
-    .less_comparer = &_galgorithm_nway_less_comparer,
+    .less_comparer = &_galgorithm_nway_merge_less_comparer,
     .less_comparer_ctx = &less_comparer_ctx,
     .item_mover = input->ctx_mover,
   };
