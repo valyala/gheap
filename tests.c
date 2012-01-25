@@ -1,7 +1,7 @@
 /* Tests for C99 gheap, galgorithm and gpriority_queue */
 
-#include "gheap.h"
 #include "galgorithm.h"
+#include "gheap.h"
 #include "gpriority_queue.h"
 
 #include <assert.h>
@@ -327,15 +327,15 @@ static void test_partial_sort(const struct gheap_ctx *const ctx,
   printf("OK\n");
 }
 
-struct nway_input_ctx
+struct nway_merge_input_ctx
 {
   int *next;
   int *end;
 };
 
-static int nway_input_next(void *const ctx)
+static int nway_merge_input_next(void *const ctx)
 {
-  struct nway_input_ctx *const c = ctx;
+  struct nway_merge_input_ctx *const c = ctx;
   assert(c->next <= c->end);
   if (c->next < c->end) {
     ++(c->next);
@@ -343,38 +343,76 @@ static int nway_input_next(void *const ctx)
   return (c->next < c->end);
 }
 
-static const void *nway_input_get(const void *const ctx)
+static const void *nway_merge_input_get(const void *const ctx)
 {
-  const struct nway_input_ctx *const c = ctx;
+  const struct nway_merge_input_ctx *const c = ctx;
   assert(c->next < c->end);
   return c->next;
 }
 
 static void nway_ctx_mover(void *const dst, const void *const src)
 {
-  *(struct nway_input_ctx *)dst = *(struct nway_input_ctx *)src;
+  *(struct nway_merge_input_ctx *)dst = *(struct nway_merge_input_ctx *)src;
 }
 
-static const struct galgorithm_nway_input_vtable nway_input_vtable = {
-  .next = &nway_input_next,
-  .get = &nway_input_get,
+static const struct galgorithm_nway_merge_input_vtable
+    nway_merge_input_vtable = {
+  .next = &nway_merge_input_next,
+  .get = &nway_merge_input_get,
 };
 
-struct nway_output_ctx
+struct nway_merge_output_ctx
 {
   int *next;
 };
 
-static void nway_output_put(void *const ctx, const void *const data)
+static void nway_merge_output_put(void *const ctx, const void *const data)
 {
-  struct nway_output_ctx *const c = ctx;
+  struct nway_merge_output_ctx *const c = ctx;
   item_mover(c->next, data);
   ++(c->next);
 }
 
-static const struct galgorithm_nway_output_vtable nway_output_vtable = {
-  .put = &nway_output_put,
+static const struct galgorithm_nway_merge_output_vtable
+    nway_merge_output_vtable = {
+  .put = &nway_merge_output_put,
 };
+
+static void small_range_sorter(const void *const ctx,
+    void *const a, const size_t n)
+{
+  galgorithm_heapsort(ctx, a, n);
+}
+
+static void test_nway_mergesort(const struct gheap_ctx *const ctx,
+    const size_t n, int *const a)
+{
+  printf("    test_nway_mergesort(n=%zu) ", n);
+
+  int *const items_tmp_buf = malloc(sizeof(a[0]) * n);
+
+  // Verify 2-way mergesort with small_range_size = 1.
+  init_array(a, n);
+  galgorithm_nway_mergesort(ctx, a, n, &small_range_sorter, ctx, 1, 2,
+      items_tmp_buf);
+  assert_sorted(ctx, a, n);
+
+  // Verify 3-way mergesort with small_range_size = 2.
+  init_array(a, n);
+  galgorithm_nway_mergesort(ctx, a, n, &small_range_sorter, ctx, 2, 3,
+      items_tmp_buf);
+  assert_sorted(ctx, a, n);
+
+  // Verify 10-way mergesort with small_range_size = 9.
+  init_array(a, n);
+  galgorithm_nway_mergesort(ctx, a, n, &small_range_sorter, ctx, 10, 9,
+      items_tmp_buf);
+  assert_sorted(ctx, a, n);
+
+  free(items_tmp_buf);
+
+  printf("OK\n");
+}
 
 static void test_nway_merge(const struct gheap_ctx *const ctx,
     const size_t n, int *const a)
@@ -383,18 +421,18 @@ static void test_nway_merge(const struct gheap_ctx *const ctx,
 
   int *const b = malloc(sizeof(*b) * n);
 
-  struct galgorithm_nway_input input = {
-    .vtable = &nway_input_vtable,
+  struct galgorithm_nway_merge_input input = {
+    .vtable = &nway_merge_input_vtable,
     .ctxs = NULL,
     .ctxs_count = 0,
-    .ctx_size = sizeof(struct nway_input_ctx),
+    .ctx_size = sizeof(struct nway_merge_input_ctx),
     .ctx_mover = &nway_ctx_mover,
   };
 
-  struct nway_output_ctx out_ctx;
+  struct nway_merge_output_ctx out_ctx;
 
-  const struct galgorithm_nway_output output = {
-    .vtable = &nway_output_vtable,
+  const struct galgorithm_nway_merge_output output = {
+    .vtable = &nway_merge_output_vtable,
     .ctx = &out_ctx,
   };
 
@@ -402,7 +440,7 @@ static void test_nway_merge(const struct gheap_ctx *const ctx,
   init_array(a, n);
   galgorithm_heapsort(ctx, a, n);
 
-  struct nway_input_ctx one_way_input_ctxs[1] = {
+  struct nway_merge_input_ctx one_way_input_ctxs[1] = {
     {
       .next = a,
       .end = a + n,
@@ -421,7 +459,7 @@ static void test_nway_merge(const struct gheap_ctx *const ctx,
     galgorithm_heapsort(ctx, a, n / 2);
     galgorithm_heapsort(ctx, a + n / 2, n - n / 2);
 
-    struct nway_input_ctx two_way_input_ctxs[2] = {
+    struct nway_merge_input_ctx two_way_input_ctxs[2] = {
       {
         .next = a,
         .end = a + n / 2,
@@ -441,20 +479,21 @@ static void test_nway_merge(const struct gheap_ctx *const ctx,
 
   // Check n-way merge with n sorted lists each containing exactly one item.
   init_array(a, n);
-  struct nway_input_ctx *const nway_input_ctxs =
-      malloc(sizeof(nway_input_ctxs[0]) * n);
+  struct nway_merge_input_ctx *const nway_merge_input_ctxs =
+      malloc(sizeof(nway_merge_input_ctxs[0]) * n);
   for (size_t i = 0; i < n; ++i) {
-    struct nway_input_ctx *const input_ctx = &nway_input_ctxs[i];
+    struct nway_merge_input_ctx *const input_ctx = &nway_merge_input_ctxs[i];
     input_ctx->next = a + i;
     input_ctx->end = a + (i + 1);
   }
 
-  input.ctxs = nway_input_ctxs;
+  input.ctxs = nway_merge_input_ctxs;
   input.ctxs_count = n;
   out_ctx.next = b;
   galgorithm_nway_merge(ctx, &input, &output);
   assert_sorted(ctx, b, n);
-  free(nway_input_ctxs);
+
+  free(nway_merge_input_ctxs);
 
   free(b);
 
@@ -560,6 +599,7 @@ static void test_all(const size_t fanout, const size_t page_chunks)
   run_all(ctx, test_heapsort);
   run_all(ctx, test_partial_sort);
   run_all(ctx, test_nway_merge);
+  run_all(ctx, test_nway_mergesort);
   run_all(ctx, test_priority_queue);
 
   printf("  test_all(fanout=%zu, page_chunks=%zu) OK\n", fanout, page_chunks);
