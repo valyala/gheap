@@ -124,19 +124,11 @@ private:
       const InputIterator &last, const ForwardIterator &result)
   {
 #ifdef GHEAP_CPP11
-    // libstdc++ is missing std::uninitialized_move(), so implement it here.
+    // libstdc++ is missing std::uninitialized_move(), so wrap
+    // the input iterator into std::make_move_iterator().
     // See http://gcc.gnu.org/bugzilla/show_bug.cgi?id=51981 .
-    typedef typename std::iterator_traits<ForwardIterator>::value_type
-        value_type;
-
-    InputIterator input = first;
-    ForwardIterator output = result;
-    while (input != last) {
-      new (&*output) value_type(std::move(*input));
-      ++output;
-      ++input;
-    }
-    return output;
+    return std::uninitialized_copy(std::make_move_iterator(first),
+        std::make_move_iterator(last), result);
 #else
     return std::uninitialized_copy(first, last, result);
 #endif
