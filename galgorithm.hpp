@@ -436,6 +436,9 @@ public:
   //
   // items_tmp_buf must point to an uninitialized memory, which can hold
   // up to (last - first) items.
+  //
+  // May raise std::bad_alloc on unsuccessful attempt to allocate temporary
+  // space for auxiliary structures required for n-way merging.
   template <class ForwardIterator, class LessComparer, class SmallRangeSorter>
   static void nway_mergesort(const ForwardIterator &first,
       const ForwardIterator &last, const LessComparer &less_comparer,
