@@ -60,7 +60,7 @@ The implementation provides the following functions:
   * pop_heap() - pops up the maximum element from the heap.
   * sort_heap() - sorts heap items in ascending order.
 
-Algorithms:
+* Heap-based algorithms:
   * heapsort() - performs heapsort.
   * partial_sort() - performs partial sort.
   * nway_merge() - performs N-way merge on top of the heap.
