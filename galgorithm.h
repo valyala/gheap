@@ -160,6 +160,7 @@ static inline void galgorithm_nway_mergesort(const struct gheap_ctx *ctx,
 #include <assert.h>     /* for assert */
 #include <stddef.h>     /* for size_t */
 #include <stdint.h>     /* for uintptr_t, SIZE_MAX and UINTPTR_MAX */
+#include <stdlib.h>     /* for malloc(), free() */
 
 /* Returns a pointer to base[index]. */
 static inline void *_galgorithm_get_item_ptr(
@@ -456,14 +457,15 @@ static inline void galgorithm_nway_mergesort(const struct gheap_ctx *const ctx,
       small_range_sorter, small_range_sorter_ctx, small_range_size);
 
   /* Step 2: Merge subranges sorted at the previous step using n-way merge. */
-  struct _galgorithm_nway_mergesort_input_ctx input_ctxs[subranges_count];
+  struct _galgorithm_nway_mergesort_input_ctx *const input_ctxs =
+      malloc(sizeof(input_ctxs[0]) * subranges_count);
   for (size_t i = 0; i < subranges_count; ++i) {
     input_ctxs[i].ctx = ctx;
   }
 
   struct galgorithm_nway_merge_input input = {
       .vtable = &_galgorithm_nway_mergesort_input_vtable,
-      .ctxs = &input_ctxs,
+      .ctxs = input_ctxs,
       .ctxs_count = subranges_count,
       .ctx_size = sizeof(input_ctxs[0]),
       .ctx_mover = &_galgorithm_nway_mergesort_input_ctx_mover,
@@ -507,6 +509,8 @@ static inline void galgorithm_nway_mergesort(const struct gheap_ctx *const ctx,
     }
     subrange_size *= subranges_count;
   }
+
+  free(input_ctxs);
 }
 
 
