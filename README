@@ -39,6 +39,10 @@ for particular cases:
     child of the heap's root (i.e. the item with index 1) sits at the beginning
     of the next VM page.
 
+See also https://github.com/valyala/gheap/tree/sophisticated-gheap branch,
+which contains sophisticated gheap implementation with more complex heap layout
+and hand-crafted optimizations.
+
 
 ===============================================================================
 The implementation provides the following functions:
