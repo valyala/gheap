@@ -88,6 +88,12 @@ There are the following files:
 Don't forget passing -DNDEBUG option to the compiler when creating optimized
 builds. This significantly speeds up gheap code by removing debug assertions.
 
+There are the following tests:
+* tests.cpp and tests.c - tests for gheap algorithms' correctness.
+* perftests.cpp and perftests.c - performance tests.
+* ops_count_test.cpp - the test, which counts the number of varius operations
+  performed by gheap algorithms.
+
 ===============================================================================
 gheap for C++ usage
 
