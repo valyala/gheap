@@ -28,7 +28,7 @@ struct lru
   // Maximum number of pages in LRU list.
   static const size_t MAX_LRU_SIZE = 16;
 
-  // LRU list of pages. Back of the list contains least recently used pages.
+  // LRU list of pages. Front of the list contains least recently used pages.
   static lru_t lru_pages;
 
   // The number of simulated pagefaults since the last lru::init() call.
@@ -58,9 +58,9 @@ struct lru
       lru_pages.erase(it);
     }
 
-    lru_pages.push_back(page_num);
+    lru_pages.push_front(page_num);
     if (lru_pages.size() > MAX_LRU_SIZE) {
-      lru_pages.pop_front();
+      lru_pages.pop_back();
     }
     assert(lru_pages.size() <= MAX_LRU_SIZE);
   }
