@@ -13,6 +13,7 @@
 #include <deque>
 #include <iostream>
 #include <iterator>
+#include <stdint.h>  // for uintptr_t (<cstdint> is missing in C++03).
 #include <vector>
 
 using namespace std;
