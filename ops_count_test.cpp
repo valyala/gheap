@@ -313,9 +313,9 @@ void test_sort_heap(vector<A> &a, const size_t n)
   A::print();
 }
 
-void test_nway_mergesort(vector<A> &a, const size_t n)
+void test_nway_mergesort_avg(vector<A> &a, const size_t n)
 {
-  cout << "  test_nway_mergesort(" << gtl::name() << "): ";
+  cout << "  test_nway_mergesort_avg(" << gtl::name() << "): ";
 
   typedef galgorithm<gtl::heap> algorithm;
 
@@ -325,11 +325,45 @@ void test_nway_mergesort(vector<A> &a, const size_t n)
   A::print();
 }
 
-void test_stl_sort(vector<A> &a, const size_t n)
+void test_nway_mergesort_worst(vector<A> &a, const size_t n)
 {
-  cout << "  test_sort(" << stl::name() << "): ";
+  cout << "  test_nway_mergesort_worst(" << gtl::name() << "): ";
+
+  typedef galgorithm<gtl::heap> algorithm;
+
+  // Simulate worst case for SGI STL sort implementation (aka introsort) -
+  // see http://en.wikipedia.org/wiki/Introsort .
+  // Actually n-way mergesort must be free of bad cases.
+  for (size_t i = 0; i < n; ++i) {
+    a[i] = n - i;
+  }
 
   init_array(a, n);
+  A::reset();
+  algorithm::nway_mergesort(a.begin(), a.end());
+  A::print();
+}
+
+void test_sort_avg(vector<A> &a, const size_t n)
+{
+  cout << "  test_sort_avg(" << stl::name() << "): ";
+
+  init_array(a, n);
+  A::reset();
+  sort(a.begin(), a.end());
+  A::print();
+}
+
+void test_sort_worst(vector<A> &a, const size_t n)
+{
+  cout << "  test_sort_worst(" << stl::name() << "): ";
+
+  // Simulate worst case for SGI STL sort implementation (aka introsort) -
+  // see http://en.wikipedia.org/wiki/Introsort .
+  for (size_t i = 0; i < n; ++i) {
+    a[i] = n - i;
+  }
+
   A::reset();
   sort(a.begin(), a.end());
   A::print();
@@ -358,6 +392,8 @@ int main()
   test_sort_heap<stl>(a, N);
   test_sort_heap<gtl>(a, N);
 
-  test_nway_mergesort(a, N);
-  test_stl_sort(a, N);
+  test_nway_mergesort_avg(a, N);
+  test_nway_mergesort_worst(a, N);
+  test_sort_avg(a, N);
+  test_sort_worst(a, N);
 }
