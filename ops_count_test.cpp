@@ -10,11 +10,65 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
+#include <deque>
 #include <iostream>
 #include <iterator>
 #include <vector>
 
 using namespace std;
+
+// Simulates a LRU list of pages, which can contain up to _max_lru_size entries.
+// Each page has size PAGE_MASK + 1.
+struct lru
+{
+  typedef deque<uintptr_t> lru_t;
+
+  static const uintptr_t PAGE_MASK = (((uintptr_t)1) << 12) - 1;
+
+  // Maximum number of pages in LRU list.
+  static const size_t MAX_LRU_SIZE = 16;
+
+  // LRU list of pages. Back of the list contains least recently used pages.
+  static lru_t lru_pages;
+
+  // The number of simulated pagefaults since the last lru::init() call.
+  static int pagefaults;
+
+  // Resets the model to initial state.
+  static void reset()
+  {
+    lru_pages.clear();
+    pagefaults = 0;
+  }
+
+  // Simulates access to a memory pointed by ptr.
+  // Brings the accessed page to the back of LRU list.
+  // If the page is absent in LRU list, then increments pagefaults counter.
+  static void access_ptr(const void *const ptr)
+  {
+    assert(lru_pages.size() <= MAX_LRU_SIZE);
+
+    uintptr_t page_num = ((uintptr_t)ptr) & ~PAGE_MASK;
+    lru_t::iterator it = find(lru_pages.begin(), lru_pages.end(),
+        page_num);
+    if (it == lru_pages.end()) {
+      ++pagefaults;
+    }
+    else {
+      lru_pages.erase(it);
+    }
+
+    lru_pages.push_back(page_num);
+    if (lru_pages.size() > MAX_LRU_SIZE) {
+      lru_pages.pop_front();
+    }
+    assert(lru_pages.size() <= MAX_LRU_SIZE);
+  }
+};
+
+lru::lru_t lru::lru_pages;
+int lru::pagefaults = 0;
+
 
 struct A
 {
@@ -41,6 +95,7 @@ struct A
     cheap_move_assignments = 0;
     expensive_move_assignments = 0;
     comparisons = 0;
+    lru::reset();
   }
 
   static void print()
@@ -51,7 +106,8 @@ struct A
         ", expensive_dtors=" << expensive_dtors << ", move_ctors=" <<
         move_ctors << ", cheap_move_assignments=" << cheap_move_assignments <<
         ", expensive_move_assignments=" << expensive_move_assignments <<
-        ", comparisons=" << comparisons << endl;
+        ", comparisons=" << comparisons << ", pagefaults=" << lru::pagefaults <<
+            endl;
   }
 
   int value;
@@ -65,11 +121,13 @@ struct A
   {
     assert(v >= 0);
     value = v;
+    lru::access_ptr(this);
   }
 
   void clear_value()
   {
     value = -1;
+    lru::access_ptr(this);
   }
 
   A()
