@@ -114,9 +114,9 @@ bool less_comparer(const T &a, const T &b)
   return (a < b);
 }
 
-template <class T, class LessComparer>
+template <class T>
 void small_range_sorter(T *const first, T *const last,
-    const LessComparer &less_comparer)
+      bool (&less_comparer)(const T &, const T &))
 {
   galgorithm<gheap<2, 1> >::heapsort(first, last, less_comparer);
 }
@@ -140,7 +140,7 @@ void perftest_nway_mergesort(T *const a, const size_t n, const size_t m)
 
     const double start = get_time();
     algorithm::nway_mergesort(a, a + n,
-        less_comparer<T>, small_range_sorter<T, bool (&)(const T &, const T &)>,
+        less_comparer<T>, small_range_sorter<T>,
         small_range_size, subranges_count);
     const double end = get_time();
 
