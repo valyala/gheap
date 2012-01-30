@@ -89,9 +89,9 @@ private:
   };
 
   // Standard sorter for small ranges.
-  template <class T, class LessComparer>
+  template <class T>
   static void _std_small_range_sorter(T *const first, T *const last,
-      const LessComparer &less_comparer)
+      bool (&less_comparer)(const T &, const T &))
   {
     assert(first <= last);
 
@@ -551,8 +551,7 @@ public:
         value_type;
 
     nway_mergesort(first, last, less_comparer,
-        _std_small_range_sorter<value_type,
-            bool (&)(const value_type&, const value_type&)>);
+        _std_small_range_sorter<value_type>);
   }
 
   // Performs 2-way mergesort.
