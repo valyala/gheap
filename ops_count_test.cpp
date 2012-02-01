@@ -118,11 +118,24 @@ struct A
     return (value >= 0);
   }
 
+  int get_value() const
+  {
+    assert(has_value());
+    lru::access_ptr(this);
+    return value;
+  }
+
   void set_value(const int v)
   {
     assert(v >= 0);
     value = v;
     lru::access_ptr(this);
+  }
+
+  void set_value(const A &a)
+  {
+    int v = a.get_value();
+    set_value(v);
   }
 
   void clear_value()
@@ -144,9 +157,8 @@ struct A
 
   A(const A &a)
   {
-    assert(a.has_value());
     ++copy_ctors;
-    set_value(a.value);
+    set_value(a);
   }
 
   void operator = (const A &a)
@@ -156,9 +168,8 @@ struct A
     }
 
     assert(has_value());
-    assert(a.has_value());
     ++copy_assignments;
-    set_value(a.value);
+    set_value(a);
   }
 
   ~A()
@@ -176,9 +187,8 @@ struct A
 
   A(A &&a)
   {
-    assert(a.has_value());
     ++move_ctors;
-    set_value(a.value);
+    set_value(a);
     a.clear_value();
   }
 
@@ -188,7 +198,6 @@ struct A
       return;
     }
 
-    assert(a.has_value());
     if (has_value()) {
       ++expensive_move_assignments;
     }
@@ -196,7 +205,7 @@ struct A
       ++cheap_move_assignments;
     }
 
-    set_value(a.value);
+    set_value(a);
     a.clear_value();
   }
 
@@ -219,22 +228,18 @@ namespace std
   template <>
   void swap(A &a, A &b)
   {
-    assert(a.has_value());
-    assert(b.has_value());
     ++A::swaps;
 
-    int tmp = a.value;
-    a.value = b.value;
-    b.value = tmp;
+    int tmp = a.get_value();
+    a.set_value(b);
+    b.set_value(tmp);
   }
 }
 
 bool operator < (const A &a, const A &b)
 {
-  assert(a.has_value());
-  assert(b.has_value());
   ++A::comparisons;
-  return (a.value < b.value);
+  return (a.get_value() < b.get_value());
 }
 
 struct stl
