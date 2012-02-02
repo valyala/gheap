@@ -537,7 +537,7 @@ public:
         small_range_size, subranges_count, items_tmp_buf);
   }
 
-  // Performs 2-way mergesort.
+  // Performs n-way mergesort.
   //
   // Uses less_comparer for items' comparison.
   //
@@ -554,7 +554,7 @@ public:
         _std_small_range_sorter<value_type, LessComparer>);
   }
 
-  // Performs 2-way mergesort.
+  // Performs n-way mergesort.
   //
   // Uses operator< for items' comparison.
   //
