@@ -10,9 +10,9 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
-#include <deque>
 #include <iostream>
 #include <iterator>
+#include <list>
 #include <stdint.h>  // for uintptr_t (<cstdint> is missing in C++03).
 #include <vector>
 
@@ -22,7 +22,7 @@ using namespace std;
 // Each page has size PAGE_MASK + 1.
 struct lru
 {
-  typedef deque<uintptr_t> lru_t;
+  typedef list<uintptr_t> lru_t;
 
   static const uintptr_t PAGE_MASK = (((uintptr_t)1) << 12) - 1;
 
@@ -54,16 +54,15 @@ struct lru
         page_num);
     if (it == lru_pages.end()) {
       ++pagefaults;
+      lru_pages.push_front(page_num);
+      if (lru_pages.size() > MAX_LRU_SIZE) {
+        lru_pages.pop_back();
+      }
+      assert(lru_pages.size() <= MAX_LRU_SIZE);
     }
     else {
-      lru_pages.erase(it);
+      lru_pages.splice(lru_pages.begin(), lru_pages, it);
     }
-
-    lru_pages.push_front(page_num);
-    if (lru_pages.size() > MAX_LRU_SIZE) {
-      lru_pages.pop_back();
-    }
-    assert(lru_pages.size() <= MAX_LRU_SIZE);
   }
 };
 
