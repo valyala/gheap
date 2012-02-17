@@ -71,7 +71,9 @@ private:
       const std::pair<T *, ptrdiff_t> tmp_buf =
           std::get_temporary_buffer<T>(size);
       _ptr = tmp_buf.first;
-      if (_ptr == 0) {
+      if (_ptr == 0 || tmp_buf.second < size) {
+        // It is OK passing (_ptr == 0) to return_temporary_buffer().
+        std::return_temporary_buffer(_ptr);
         throw std::bad_alloc();
       }
     }
