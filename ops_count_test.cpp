@@ -19,7 +19,7 @@
 using namespace std;
 
 // Simulates a LRU list of pages, which can contain up to _max_lru_size entries.
-// Each page has size PAGE_MASK + 1.
+// Each page's size is PAGE_MASK + 1 bytes.
 struct lru
 {
   typedef list<uintptr_t> lru_t;
@@ -27,7 +27,7 @@ struct lru
   static const uintptr_t PAGE_MASK = (((uintptr_t)1) << 12) - 1;
 
   // Maximum number of pages in LRU list.
-  static const size_t MAX_LRU_SIZE = 16;
+  static const size_t MAX_LRU_SIZE = 20;
 
   // LRU list of pages. Front of the list contains least recently used pages.
   static lru_t lru_pages;
@@ -49,11 +49,18 @@ struct lru
   {
     assert(lru_pages.size() <= MAX_LRU_SIZE);
 
-    uintptr_t page_num = ((uintptr_t)ptr) & ~PAGE_MASK;
+    const uintptr_t page_num = ((uintptr_t)ptr) & ~PAGE_MASK;
     lru_t::iterator it = find(lru_pages.begin(), lru_pages.end(),
         page_num);
     if (it == lru_pages.end()) {
-      ++pagefaults;
+      const uintptr_t prev_page_num = page_num - PAGE_MASK - 1;
+      if (count(lru_pages.begin(), lru_pages.end(), prev_page_num) == 0) {
+        // Count pagefault only if the previous page is not in the LRU list.
+        // If the previous page is in the LRU list, then assume that the current
+        // page is already pre-fetched, so no hard pagefault.
+        ++pagefaults;
+      }
+
       lru_pages.push_front(page_num);
       if (lru_pages.size() > MAX_LRU_SIZE) {
         lru_pages.pop_back();
