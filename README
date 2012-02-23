@@ -7,9 +7,9 @@ It provides two additional paremeters, which allow optimizing heap
 for particular cases:
 
 * Fanout. The number of children per each heap node.
-  * Fanout=1 corresponds to usual List data structure.
+  * Fanout=1 corresponds to sorted List data structure.
     See http://en.wikipedia.org/wiki/List_%28computing%29 .
-  * Fanout=2 corresponds to usual Binary heap.
+  * Fanout=2 corresponds to Binary heap.
     See http://en.wikipedia.org/wiki/Binary_heap .
   * Fanout>2 corresponds to D-heap. See http://en.wikipedia.org/wiki/D-heap .
     D-heap can be faster than Binary heap in the following cases:
@@ -38,7 +38,6 @@ for particular cases:
     heap's root item is placed at the end of VM page. In this case the first
     child of the heap's root (i.e. the item with index 1) sits at the beginning
     of the next VM page.
-
 
 ===============================================================================
 The implementation provides the following functions:
