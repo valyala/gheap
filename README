@@ -7,9 +7,9 @@ It provides two additional paremeters, which allow optimizing heap
 for particular cases:
 
 * Fanout. The number of children per each heap node.
-  * Fanout=1 corresponds to usual List data structure.
+  * Fanout=1 corresponds to sorted List data structure.
     See http://en.wikipedia.org/wiki/List_%28computing%29 .
-  * Fanout=2 corresponds to usual Binary heap.
+  * Fanout=2 corresponds to Binary heap.
     See http://en.wikipedia.org/wiki/Binary_heap .
   * Fanout>2 corresponds to D-heap. See http://en.wikipedia.org/wiki/D-heap .
     D-heap can be faster than Binary heap in the following cases:
@@ -41,7 +41,7 @@ for particular cases:
 
 See also https://github.com/valyala/gheap/tree/sophisticated-gheap branch,
 which contains sophisticated gheap implementation with more complex heap layout
-and hand-crafted optimizations.
+and low-level optimizations.
 
 
 ===============================================================================
