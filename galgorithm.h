@@ -228,7 +228,7 @@ struct _galgorithm_nway_merge_less_comparer_ctx
   const struct galgorithm_nway_merge_input_vtable *vtable;
 };
 
-int _galgorithm_nway_merge_less_comparer(const void *const ctx,
+static inline int _galgorithm_nway_merge_less_comparer(const void *const ctx,
     const void *const a, const void *const b)
 {
   const struct _galgorithm_nway_merge_less_comparer_ctx *const c = ctx;
