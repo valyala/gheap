@@ -187,14 +187,14 @@ private:
     assert(hole_index < heap_size);
 
     const size_t root_index = hole_index;
-    const size_t remaining_items = (heap_size - 1) % Fanout;
+    const size_t last_full_index = heap_size - (heap_size - 1) % Fanout;
     while (true) {
       const size_t child_index = get_child_index(hole_index);
-      if (child_index >= heap_size - remaining_items) {
+      if (child_index >= last_full_index) {
         if (child_index < heap_size) {
-          assert(heap_size - child_index == remaining_items);
-          hole_index = _move_up_max_child(first, less_comparer, remaining_items,
-              hole_index, child_index);
+          assert(child_index == last_full_index);
+          hole_index = _move_up_max_child(first, less_comparer,
+              heap_size - child_index, hole_index, child_index);
         }
         break;
       }
