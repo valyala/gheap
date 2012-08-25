@@ -165,17 +165,14 @@ private:
     typedef typename std::iterator_traits<RandomAccessIterator>::value_type
         value_type;
 
-    const value_type *max_child = &first[child_index];
-    size_t j = 0;
+    size_t max_child_index = child_index;
     for (size_t i = 1; i < children_count; ++i) {
-      const value_type &tmp = first[child_index + i];
-      if (!less_comparer(tmp, *max_child)) {
-        j = i;
-        max_child = &tmp;
+      if (!less_comparer(first[child_index + i], first[max_child_index])) {
+        max_child_index = child_index + i;
       }
     }
-    _swap(first[item_index], *max_child);
-    return child_index + j;
+    _swap(first[item_index], first[max_child_index]);
+    return max_child_index;
   }
 
   // Sifts the given item down in the heap of the given size starting

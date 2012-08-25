@@ -299,17 +299,17 @@ static inline size_t _gheap_move_up_max_child(const struct gheap_ctx *const ctx,
   const void *const less_comparer_ctx = ctx->less_comparer_ctx;
   const gheap_item_mover_t item_mover = ctx->item_mover;
 
-  const void *max_child = _gheap_get_item_ptr(ctx, base, child_index);
-  size_t j = 0;
+  size_t max_child_index = child_index;
   for (size_t i = 1; i < children_count; ++i) {
-    const void *const tmp = _gheap_get_item_ptr(ctx, base, child_index + i);
-    if (!less_comparer(less_comparer_ctx, tmp, max_child)) {
-      j = i;
-      max_child = tmp;
+    if (!less_comparer(less_comparer_ctx,
+        _gheap_get_item_ptr(ctx, base, child_index + i),
+        _gheap_get_item_ptr(ctx, base, max_child_index))) {
+      max_child_index = child_index + i;
     }
   }
-  item_mover(_gheap_get_item_ptr(ctx, base, hole_index), max_child);
-  return child_index + j;
+  item_mover(_gheap_get_item_ptr(ctx, base, hole_index),
+      _gheap_get_item_ptr(ctx, base, max_child_index));
+  return max_child_index;
 }
 
 /*
