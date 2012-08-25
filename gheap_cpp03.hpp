@@ -160,10 +160,8 @@ private:
       const LessComparer &less_comparer, const size_t children_count,
       const size_t item_index, const size_t child_index)
   {
+    assert(children_count > 0);
     assert(child_index == get_child_index(item_index));
-
-    typedef typename std::iterator_traits<RandomAccessIterator>::value_type
-        value_type;
 
     size_t max_child_index = child_index;
     for (size_t i = 1; i < children_count; ++i) {
