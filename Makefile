@@ -12,19 +12,33 @@ CPP11_CFLAGS=$(COMMON_CFLAGS) -std=c++0x -DGHEAP_CPP11
 
 all: tests perftests ops_count_test
 
-tests:
+build-tests:
 	$(C_COMPILER) tests.c $(C_CFLAGS) $(DEBUG_CFLAGS) -o tests_c
 	$(CPP_COMPILER) tests.cpp $(CPP03_CFLAGS) $(DEBUG_CFLAGS) -o tests_cpp03
 	$(CPP_COMPILER) tests.cpp $(CPP11_CFLAGS) $(DEBUG_CFLAGS) -o tests_cpp11
 
-perftests:
+tests: build-tests
+	./tests_c
+	./tests_cpp03
+	./tests_cpp11
+
+build-perftests:
 	$(C_COMPILER) perftests.c $(C_CFLAGS) $(OPT_CFLAGS) -o perftests_c
 	$(CPP_COMPILER) perftests.cpp $(CPP03_CFLAGS) $(OPT_CFLAGS) -o perftests_cpp03
 	$(CPP_COMPILER) perftests.cpp $(CPP11_CFLAGS) $(OPT_CFLAGS) -o perftests_cpp11
 
-ops_count_test:
+perftests:
+	./perftests_c
+	./perftests_cpp03
+	./perftests_cpp11
+
+build-ops_count_test:
 	$(CPP_COMPILER) ops_count_test.cpp $(CPP03_CFLAGS) $(OPT_CFLAGS) -o ops_count_test_cpp03
 	$(CPP_COMPILER) ops_count_test.cpp $(CPP11_CFLAGS) $(OPT_CFLAGS) -o ops_count_test_cpp11
+
+ops_count_test:
+	./ops_count_test_cpp03
+	./ops_count_test_cpp11
 
 clean:
 	rm -f ./tests_c
