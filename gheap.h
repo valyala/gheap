@@ -330,14 +330,14 @@ static inline void _gheap_sift_down(const struct gheap_ctx *const ctx,
   const size_t fanout = ctx->fanout;
 
   const size_t root_index = hole_index;
-  const size_t remaining_items = (heap_size - 1) % fanout;
+  const size_t last_full_index = heap_size - (heap_size - 1) % fanout;
   while (1) {
     const size_t child_index = gheap_get_child_index(ctx, hole_index);
-    if (child_index >= heap_size - remaining_items) {
+    if (child_index >= last_full_index) {
       if (child_index < heap_size) {
-        assert(heap_size - child_index == remaining_items);
-        hole_index = _gheap_move_up_max_child(ctx, base, remaining_items,
-            hole_index, child_index);
+        assert(child_index == last_full_index);
+        hole_index = _gheap_move_up_max_child(ctx, base,
+            heap_size - child_index, hole_index, child_index);
       }
       break;
     }
