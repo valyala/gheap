@@ -161,6 +161,7 @@ private:
       const size_t hole_index, const size_t child_index)
   {
     assert(children_count > 0);
+    assert(children_count <= Fanout);
     assert(child_index == get_child_index(hole_index));
 
     size_t max_child_index = child_index;

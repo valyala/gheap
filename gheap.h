@@ -295,6 +295,10 @@ static inline size_t _gheap_move_up_max_child(const struct gheap_ctx *const ctx,
     void *const base, const size_t children_count,
     const size_t hole_index, const size_t child_index)
 {
+  assert(children_count > 0);
+  assert(children_count <= ctx->fanout);
+  assert(child_index == gheap_get_child_index(ctx, hole_index));
+
   const gheap_less_comparer_t less_comparer = ctx->less_comparer;
   const void *const less_comparer_ctx = ctx->less_comparer_ctx;
   const gheap_item_mover_t item_mover = ctx->item_mover;
