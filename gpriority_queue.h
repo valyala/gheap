@@ -6,6 +6,7 @@
 
 #include "gheap.h"
 
+#include <stdbool.h>   /* for bool */
 #include <stddef.h>    /* for size_t */
 
 
@@ -60,7 +61,7 @@ static inline const void *gpriority_queue_top(struct gpriority_queue *q);
 /*
  * Pushes a copy of the given item into priority queue.
  */
-static inline void gpriority_queue_push(struct gpriority_queue *q,
+static inline bool gpriority_queue_push(struct gpriority_queue *q,
     const void *item);
 
 /*
@@ -77,6 +78,14 @@ static inline void gpriority_queue_pop(struct gpriority_queue *q);
 #include <stdio.h>    /* for fprintf() */
 #include <stdlib.h>   /* for malloc(), free() */
 
+#ifndef GHEAP_MALLOC
+#define GHEAP_MALLOC malloc
+#endif
+
+#ifndef GHEAP_FREE
+#define GHEAP_FREE free
+#endif
+
 struct gpriority_queue
 {
   const struct gheap_ctx *ctx;
@@ -91,12 +100,19 @@ static inline struct gpriority_queue *gpriority_queue_create(
     const struct gheap_ctx *const ctx,
     const gpriority_queue_item_deleter_t item_deleter)
 {
-  struct gpriority_queue *q = malloc(sizeof(*q));
+  struct gpriority_queue *q = GHEAP_MALLOC(sizeof(*q));
+  if (!q) {
+    return NULL;
+  }
 
   q->ctx = ctx;
   q->item_deleter = item_deleter;
 
-  q->base = malloc(ctx->item_size);
+  q->base = GHEAP_MALLOC(ctx->item_size);
+  if (!q->base) {
+    GHEAP_FREE(q);
+    return NULL;
+  }
   q->size = 0;
   q->capacity = 1;
 
@@ -108,13 +124,20 @@ static inline struct gpriority_queue *gpriority_queue_create_from_array(
     const gpriority_queue_item_deleter_t item_deleter,
     const void *const a, size_t n)
 {
-  struct gpriority_queue *q = malloc(sizeof(*q));
+  struct gpriority_queue *q = GHEAP_MALLOC(sizeof(*q));
+  if (!q) {
+    return NULL;
+  }
 
   q->ctx = ctx;
   q->item_deleter = item_deleter;
 
   assert(n <= SIZE_MAX / ctx->item_size);
-  q->base = malloc(n * ctx->item_size);
+  q->base = GHEAP_MALLOC(n * ctx->item_size);
+  if (!q->base) {
+    GHEAP_FREE(q);
+    return NULL;
+  }
   q->size = n;
   q->capacity = n;
 
@@ -134,8 +157,8 @@ static inline void gpriority_queue_delete(struct gpriority_queue *const q)
     void *const item = ((char *)q->base) + i * q->ctx->item_size;
     q->item_deleter(item);
   }
-  free(q->base);
-  free(q);
+  GHEAP_FREE(q->base);
+  GHEAP_FREE(q);
 }
 
 static inline int gpriority_queue_empty(struct gpriority_queue *const q)
@@ -155,22 +178,25 @@ static inline const void *gpriority_queue_top(struct gpriority_queue *const q)
   return q->base;
 }
 
-static inline void gpriority_queue_push(struct gpriority_queue *const q,
+static inline bool gpriority_queue_push(struct gpriority_queue *const q,
     const void *item)
 {
   if (q->size == q->capacity) {
     if (q->capacity > SIZE_MAX / 2 / q->ctx->item_size) {
       fprintf(stderr, "priority queue size overflow");
-      exit(EXIT_FAILURE);
+      return false;
     }
     q->capacity *= 2;
-    char *const new_base = malloc(q->capacity * q->ctx->item_size);
+    char *const new_base = GHEAP_MALLOC(q->capacity * q->ctx->item_size);
+    if (!new_base) {
+      return false;
+    }
     for (size_t i = 0; i < q->size; ++i) {
       void *const dst = new_base + i * q->ctx->item_size;
       const void *const src = ((char *)q->base) + i * q->ctx->item_size;
       q->ctx->item_mover(dst, src);
     }
-    free(q->base);
+    GHEAP_FREE(q->base);
     q->base = new_base;
   }
 
@@ -179,6 +205,7 @@ static inline void gpriority_queue_push(struct gpriority_queue *const q,
   q->ctx->item_mover(dst, item);
   ++(q->size);
   gheap_push_heap(q->ctx, q->base, q->size);
+  return true;
 }
 
 static inline void gpriority_queue_pop(struct gpriority_queue *const q)
